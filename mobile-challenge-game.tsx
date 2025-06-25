@@ -3,7 +3,126 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { BarChart3 } from "lucide-react"
+import { BarChart3, HelpCircle } from "lucide-react"
+
+// Cache management utilities
+const CACHE_PREFIX = "googly-game-cache-"
+const CACHE_VERSION = "1.0"
+const MAX_CACHE_SIZE = 500 * 1024 * 1024 // 500MB limit
+
+interface CacheItem {
+  data: string
+  timestamp: number
+  size: number
+}
+
+const cacheManager = {
+  async cacheResource(url: string): Promise<string> {
+    const cacheKey = CACHE_PREFIX + btoa(url)
+
+    // Check if already cached
+    const cached = localStorage.getItem(cacheKey)
+    if (cached) {
+      try {
+        const item: CacheItem = JSON.parse(cached)
+        return item.data
+      } catch (e) {
+        localStorage.removeItem(cacheKey)
+      }
+    }
+
+    try {
+      // Fetch and cache the resource
+      const response = await fetch(url)
+      if (!response.ok) throw new Error("Failed to fetch")
+
+      const blob = await response.blob()
+      const reader = new FileReader()
+
+      return new Promise((resolve, reject) => {
+        reader.onload = () => {
+          const dataUrl = reader.result as string
+          const item: CacheItem = {
+            data: dataUrl,
+            timestamp: Date.now(),
+            size: dataUrl.length,
+          }
+
+          // Check cache size before storing
+          this.ensureCacheSpace(item.size)
+
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify(item))
+            resolve(dataUrl)
+          } catch (e) {
+            // If storage fails, return the data URL anyway
+            resolve(dataUrl)
+          }
+        }
+        reader.onerror = () => reject(new Error("Failed to read blob"))
+        reader.readAsDataURL(blob)
+      })
+    } catch (error) {
+      console.warn("Failed to cache resource:", url, error)
+      return url // Return original URL as fallback
+    }
+  },
+
+  ensureCacheSpace(neededSize: number) {
+    const cacheKeys = Object.keys(localStorage).filter((key) => key.startsWith(CACHE_PREFIX))
+    let totalSize = 0
+
+    // Calculate current cache size
+    cacheKeys.forEach((key) => {
+      try {
+        const item: CacheItem = JSON.parse(localStorage.getItem(key) || "{}")
+        totalSize += item.size || 0
+      } catch (e) {
+        localStorage.removeItem(key)
+      }
+    })
+
+    // Remove oldest items if needed
+    if (totalSize + neededSize > MAX_CACHE_SIZE) {
+      const items = cacheKeys
+        .map((key) => {
+          try {
+            const item: CacheItem = JSON.parse(localStorage.getItem(key) || "{}")
+            return { key, timestamp: item.timestamp || 0, size: item.size || 0 }
+          } catch (e) {
+            localStorage.removeItem(key)
+            return null
+          }
+        })
+        .filter(Boolean)
+        .sort((a, b) => a!.timestamp - b!.timestamp)
+
+      let removedSize = 0
+      for (const item of items) {
+        if (totalSize - removedSize + neededSize <= MAX_CACHE_SIZE) break
+        localStorage.removeItem(item!.key)
+        removedSize += item!.size
+      }
+    }
+  },
+
+  clearCache() {
+    const cacheKeys = Object.keys(localStorage).filter((key) => key.startsWith(CACHE_PREFIX))
+    cacheKeys.forEach((key) => localStorage.removeItem(key))
+  },
+
+  getCacheSize(): number {
+    const cacheKeys = Object.keys(localStorage).filter((key) => key.startsWith(CACHE_PREFIX))
+    return cacheKeys.reduce((total, key) => {
+      try {
+        const item: CacheItem = JSON.parse(localStorage.getItem(key) || "{}")
+        return total + (item.size || 0)
+      } catch (e) {
+        return total
+      }
+    }, 0)
+  },
+}
 
 const challengeCards = [
   // Face Off Cards
@@ -148,6 +267,13 @@ const challengeCards = [
     challenge: "Pick a partner and try to stare into each other's eyes for 30 seconds without blinking or laughing.",
     color: "bg-gradient-to-br from-blue-100 to-cyan-200 border-blue-400",
     icon: "🤝",
+  },
+  {
+    category: "Teamwork",
+    challenge: "Create a short skit with two others.",
+    color: "bg-gradient-to-br from-blue-100 to-cyan-200 border-blue-400",
+    icon: "🤝",
+    hint: "Think about everyday situations! A tiny argument over the last slice of pizza? Two explorers discovering something weird? A pet trying to convince its human to give it treats? Keep it simple!",
   },
 
   // Finders Sharers Cards
@@ -309,6 +435,20 @@ const challengeCards = [
   // Say/Sing Cards
   {
     category: "Say/Sing",
+    challenge: "Tell a joke in a pirate voice.",
+    color: "bg-gradient-to-br from-purple-100 to-violet-200 border-purple-400",
+    icon: "🎤",
+    hint: "What's a pirate's favorite letter? Arrrrrrr! Now say it with an eyepatch and a parrot on your shoulder (imaginary ones work!).",
+  },
+  {
+    category: "Say/Sing",
+    challenge: "Say a tongue twister three times fast.",
+    color: "bg-gradient-to-br from-purple-100 to-violet-200 border-purple-400",
+    icon: "🎤",
+    hint: "Peter Piper picked a peck of pickled peppers. Or She sells seashells by the seashore. Speed it up!",
+  },
+  {
+    category: "Say/Sing",
     challenge: "Say your name backward three times.",
     color: "bg-gradient-to-br from-purple-100 to-violet-200 border-purple-400",
     icon: "🎤",
@@ -355,6 +495,8 @@ const challengeCards = [
     color: "bg-gradient-to-br from-purple-100 to-violet-200 border-purple-400",
     icon: "🎤",
   },
+  // Note: "Recite a nursery rhyme as fast as you possibly can without stumbling." was not found in the existing list.
+  // If it was intended to be a new card, it would be added here. For now, only existing cards are modified.
 
   // Act It Out Cards
   {
@@ -661,6 +803,11 @@ export default function Component() {
     gamesPlayed: 0,
   })
   const [videoError, setVideoError] = useState(false)
+  const [cachedVideoSrc, setCachedVideoSrc] = useState<string>("")
+  const [cachedImageSrc, setCachedImageSrc] = useState<string>("")
+  const [isLoadingAssets, setIsLoadingAssets] = useState(true)
+  const [cachedShuffleSrc, setCachedShuffleSrc] = useState<string>("")
+  const [showHint, setShowHint] = useState(false)
 
   // Load stats from localStorage on component mount
   useEffect(() => {
@@ -724,21 +871,23 @@ export default function Component() {
     setSelectedCard(null)
     setCurrentRankings({ surprising: 0, funny: 0, delightful: 0 })
     setAwardWinners(null)
+    setShowHint(false)
     setGameState("playing")
-    dealCards(shuffled)
+    dealCards(shuffled, 1)
   }
 
-  const dealCards = (deck: typeof challengeCards) => {
+  const dealCards = (deck: typeof challengeCards, turn: number) => {
     setIsShuffling(true)
     setTimeout(() => {
-      const cards = deck.slice((currentTurn - 1) * 2, currentTurn * 2)
+      const cards = deck.slice((turn - 1) * 2, turn * 2)
       setCurrentCards(cards)
       setIsShuffling(false)
-    }, 1500)
+    }, 5000) // Changed from 1500 to 5000 (5 seconds)
   }
 
   const selectCard = (card: (typeof challengeCards)[0]) => {
     setSelectedCard(card)
+    setShowHint(false) // Reset hint visibility when a new card is selected
   }
 
   const nextTurn = () => {
@@ -763,11 +912,13 @@ export default function Component() {
         setGameState("cardRain")
         startCardRain(newResults)
       } else {
-        setCurrentTurn(currentTurn + 1)
+        const nextTurnNumber = currentTurn + 1
+        setCurrentTurn(nextTurnNumber)
         setSelectedCard(null)
         setCurrentRankings({ surprising: 0, funny: 0, delightful: 0 })
+        setShowHint(false) // Reset hint for next turn
         setGameState("playing")
-        dealCards(shuffledCards)
+        dealCards(shuffledCards, nextTurnNumber)
       }
     }
   }
@@ -940,11 +1091,58 @@ export default function Component() {
     }
   }, [gameState, currentAward])
 
+  // Cache assets on component mount
+  useEffect(() => {
+    const cacheAssets = async () => {
+      setIsLoadingAssets(true)
+
+      try {
+        // Cache video files
+        const videoPromises = [
+          cacheManager.cacheResource("/googly-logo.mp4"),
+          cacheManager.cacheResource("/googly-logo.webm"),
+          cacheManager.cacheResource("/shuffle.mp4"), // Add shuffle video
+        ]
+
+        // Cache image fallback
+        const imagePromise = cacheManager.cacheResource("/googly-game-logo.png")
+
+        const [mp4Src, webmSrc, shuffleSrc, imageSrc] = await Promise.allSettled([...videoPromises, imagePromise])
+
+        if (mp4Src.status === "fulfilled") {
+          setCachedVideoSrc(mp4Src.value)
+        }
+
+        if (imageSrc.status === "fulfilled") {
+          setCachedImageSrc(imageSrc.value)
+        }
+
+        // Store shuffle video
+        if (shuffleSrc.status === "fulfilled") {
+          setCachedShuffleSrc(shuffleSrc.value)
+        }
+      } catch (error) {
+        console.warn("Failed to cache some assets:", error)
+      } finally {
+        setIsLoadingAssets(false)
+      }
+    }
+
+    cacheAssets()
+  }, [])
+
   const ShufflingAnimation = () => (
     <div className="flex flex-col items-center justify-center h-64 space-y-4">
-      <div className="relative">
-        <div className="w-20 h-28 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg animate-spin"></div>
-        <div className="absolute top-2 left-2 w-16 h-24 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-lg animate-pulse"></div>
+      <div className="w-[80vw] max-w-md h-auto flex items-center justify-center">
+        <video autoPlay loop muted playsInline className="w-full h-auto object-contain">
+          {cachedShuffleSrc && <source src={cachedShuffleSrc} type="video/mp4" />}
+          <source src="/shuffle.mp4" type="video/mp4" />
+          {/* Fallback animation if video fails */}
+          <div className="relative">
+            <div className="w-20 h-28 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg animate-spin"></div>
+            <div className="absolute top-2 left-2 w-16 h-24 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-lg animate-pulse"></div>
+          </div>
+        </video>
       </div>
       <div className="text-2xl font-bold text-gray-800 animate-bounce">🎴 Shuffling cards!</div>
       <div className="text-sm text-gray-600 animate-pulse">Preparing your next challenge...</div>
@@ -953,7 +1151,7 @@ export default function Component() {
 
   if (gameState === "menu") {
     return (
-      <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen bg-[#F7F2E8] flex flex-col items-center justify-center p-4">
         <Card
           className="w-full max-w-none mx-4 bg-white shadow-lg border-0"
           style={{ minHeight: "calc(100vh - 2rem)" }}
@@ -965,7 +1163,7 @@ export default function Component() {
             <div className="text-center space-y-8 w-full max-w-sm">
               {/* Animated Logo Video with fallback */}
               <div className="w-full max-w-[240px] mx-auto">
-                {!videoError ? (
+                {!videoError && !isLoadingAssets ? (
                   <video
                     autoPlay
                     loop
@@ -975,15 +1173,26 @@ export default function Component() {
                     style={{ maxHeight: "140px" }}
                     onError={() => setVideoError(true)}
                   >
+                    {cachedVideoSrc && <source src={cachedVideoSrc} type="video/mp4" />}
                     <source src="/googly-logo.mp4" type="video/mp4" />
                     <source src="/googly-logo.webm" type="video/webm" />
                     {/* Fallback content */}
                     <div className="text-3xl font-bold text-black font-jua whitespace-nowrap">The Googly Game</div>
                   </video>
+                ) : isLoadingAssets ? (
+                  /* Loading state */
+                  <div className="w-full flex flex-col items-center justify-center py-6">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mb-2"></div>
+                    <div className="text-sm text-gray-500">Loading...</div>
+                  </div>
                 ) : (
                   /* Fallback when video fails to load */
                   <div className="w-full flex flex-col items-center justify-center py-6">
-                    <img src="/googly-game-logo.png" alt="The Googly Game" className="w-full max-w-[240px] h-auto" />
+                    <img
+                      src={cachedImageSrc || "/googly-game-logo.png"}
+                      alt="The Googly Game"
+                      className="w-full max-w-[240px] h-auto"
+                    />
                   </div>
                 )}
               </div>
@@ -1046,7 +1255,7 @@ export default function Component() {
 
   if (gameState === "stats") {
     return (
-      <div className="min-h-screen bg-gray-100 p-4">
+      <div className="min-h-screen bg-[#F7F2E8] p-4">
         <div className="max-w-md mx-auto pt-8">
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold text-black mb-2">Statistics</h1>
@@ -1137,7 +1346,7 @@ export default function Component() {
 
   if (gameState === "playing") {
     return (
-      <div className="min-h-screen bg-gray-100 p-4">
+      <div className="min-h-screen bg-[#F7F2E8] p-4">
         <div className="max-w-md mx-auto">
           <div className="text-center mb-6 pt-4">
             <h2 className="text-2xl font-bold text-black mb-2">Round {currentTurn} of 8</h2>
@@ -1145,7 +1354,11 @@ export default function Component() {
           </div>
 
           {isShuffling ? (
-            <ShufflingAnimation />
+            <div className="mt-20">
+              {" "}
+              {/* Changed from mt-8 to mt-20 to push shuffle animation down further */}
+              <ShufflingAnimation />
+            </div>
           ) : (
             <div className="space-y-4 mb-6">
               {currentCards.map((card, index) => (
@@ -1168,6 +1381,29 @@ export default function Component() {
                         </span>
                       </div>
                       <p className="font-medium text-gray-900 leading-tight">{card.challenge}</p>
+                      {selectedCard === card && card.hint && (
+                        <>
+                          {!showHint && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="mt-3 w-full text-xs py-1 bg-white/80 hover:bg-white"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setShowHint(true)
+                              }}
+                            >
+                              <HelpCircle className="w-3 h-3 mr-1" /> Show Hint
+                            </Button>
+                          )}
+                          {showHint && (
+                            <div className="mt-3 text-xs text-gray-800 bg-yellow-50 p-2 rounded-md border border-yellow-200">
+                              <p className="font-semibold mb-1 text-yellow-700">Hint:</p>
+                              <p>{card.hint}</p>
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -1181,7 +1417,7 @@ export default function Component() {
                 onClick={nextTurn}
                 className="w-full bg-black hover:bg-gray-800 text-white font-medium text-lg py-3 rounded-full"
               >
-                I did the thing!
+                {selectedCard?.category === "Teamwork" ? "We did the thing!" : "I did the thing!"}
               </Button>
               <p className="text-gray-500 text-sm">(pass to the next player)</p>
             </div>
@@ -1193,7 +1429,7 @@ export default function Component() {
 
   if (gameState === "ranking") {
     return (
-      <div className="min-h-screen bg-gray-100 p-4">
+      <div className="min-h-screen bg-[#F7F2E8] p-4">
         <div className="max-w-md mx-auto">
           {selectedCard && (
             <div className="mb-4 mx-4 mt-8">
@@ -1292,7 +1528,7 @@ export default function Component() {
 
   if (gameState === "cardRain") {
     return (
-      <div className="min-h-screen bg-gray-100 relative overflow-hidden">
+      <div className="min-h-screen bg-[#F7F2E8] relative overflow-hidden">
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center">
             <h2 className="text-3xl font-bold text-black mb-4">Game complete!</h2>
@@ -1408,7 +1644,7 @@ export default function Component() {
 
   if (gameState === "finalRecap" && awardWinners) {
     return (
-      <div className="min-h-screen bg-gray-100 p-4">
+      <div className="min-h-screen bg-[#F7F2E8] p-4">
         <div className="max-w-md mx-auto text-center space-y-6 pt-8">
           <h1 className="text-3xl font-bold text-black">Hall of Fame</h1>
           <p className="text-gray-600">Your legendary moments</p>
