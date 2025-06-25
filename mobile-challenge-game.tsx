@@ -396,6 +396,7 @@ export default function Component() {
     lastPlayedDate: "",
     gamesPlayed: 0,
   })
+  const [videoError, setVideoError] = useState(false)
 
   // Load stats from localStorage on component mount
   useEffect(() => {
@@ -692,14 +693,43 @@ export default function Component() {
         <Card className="w-full max-w-[320px] bg-white shadow-lg border-0">
           <CardContent className="p-8">
             <div className="text-center space-y-6">
-              {/* Animated Logo Video */}
+              {/* Animated Logo Video with fallback */}
               <div className="w-full max-w-[200px] mx-auto">
-                <video autoPlay loop muted playsInline className="w-full h-auto" style={{ maxHeight: "120px" }}>
-                  <source src="/googly-logo.mov" type="video/mp4" />
-                  <source src="/googly-logo.mov" type="video/quicktime" />
-                  {/* Fallback text if video doesn't load */}
-                  <div className="text-3xl font-bold text-black font-jua whitespace-nowrap">The Googly Game</div>
-                </video>
+                {!videoError ? (
+                  <video
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="w-full h-auto"
+                    style={{ maxHeight: "120px" }}
+                    onError={() => setVideoError(true)}
+                  >
+                    <source src="/googly-logo.mp4" type="video/mp4" />
+                    <source src="/googly-logo.webm" type="video/webm" />
+                    <source src="/googly-logo.mov" type="video/quicktime" />
+                    {/* Fallback content */}
+                    <div className="text-3xl font-bold text-black font-jua whitespace-nowrap">The Googly Game</div>
+                  </video>
+                ) : (
+                  /* Fallback when video fails to load */
+                  <div className="w-full flex flex-col items-center justify-center py-4">
+                    <div className="w-16 h-16 mx-auto bg-black rounded-lg flex items-center justify-center mb-4">
+                      <div className="grid grid-cols-3 gap-1">
+                        <div className="w-3 h-3 bg-yellow-400 rounded-sm"></div>
+                        <div className="w-3 h-3 bg-green-400 rounded-sm"></div>
+                        <div className="w-3 h-3 bg-gray-300 rounded-sm"></div>
+                        <div className="w-3 h-3 bg-blue-400 rounded-sm"></div>
+                        <div className="w-3 h-3 bg-red-400 rounded-sm"></div>
+                        <div className="w-3 h-3 bg-purple-400 rounded-sm"></div>
+                        <div className="w-3 h-3 bg-orange-400 rounded-sm"></div>
+                        <div className="w-3 h-3 bg-pink-400 rounded-sm"></div>
+                        <div className="w-3 h-3 bg-cyan-400 rounded-sm"></div>
+                      </div>
+                    </div>
+                    <h1 className="text-3xl font-bold text-black font-jua whitespace-nowrap">The Googly Game</h1>
+                  </div>
+                )}
               </div>
 
               <p className="text-gray-600 text-lg">
@@ -1152,10 +1182,14 @@ export default function Component() {
             <Button
               onClick={() => setGameState("menu")}
               className="w-full bg-black hover:bg-gray-800 text-white font-medium text-lg py-4 rounded-full"
-            />
+            >
+              Play Again?
+            </Button>
           </div>
         </div>
       </div>
     )
   }
+
+  return null
 }
