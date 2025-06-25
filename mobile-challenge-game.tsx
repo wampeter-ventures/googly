@@ -1091,17 +1091,17 @@ export default function Component() {
     }
   }, [gameState, currentAward])
 
-  // Cache assets on component mount
+  // Cache assets on component mount - now includes shuffle video preloading
   useEffect(() => {
     const cacheAssets = async () => {
       setIsLoadingAssets(true)
 
       try {
-        // Cache video files
+        // Cache all video files including shuffle video
         const videoPromises = [
           cacheManager.cacheResource("/googly-logo.mp4"),
           cacheManager.cacheResource("/googly-logo.webm"),
-          cacheManager.cacheResource("/shuffle.mp4"), // Add shuffle video
+          cacheManager.cacheResource("/shuffle.MP4"), // Preload shuffle video
         ]
 
         // Cache image fallback
@@ -1117,9 +1117,12 @@ export default function Component() {
           setCachedImageSrc(imageSrc.value)
         }
 
-        // Store shuffle video
+        // Store shuffle video - this is now preloaded on the home screen
         if (shuffleSrc.status === "fulfilled") {
           setCachedShuffleSrc(shuffleSrc.value)
+          console.log("Shuffle video cached successfully")
+        } else {
+          console.warn("Failed to cache shuffle video:", shuffleSrc)
         }
       } catch (error) {
         console.warn("Failed to cache some assets:", error)
@@ -1134,11 +1137,26 @@ export default function Component() {
   const ShufflingAnimation = () => (
     <div className="flex flex-col items-center justify-center h-64 space-y-4">
       <div className="w-[80vw] max-w-md h-auto flex items-center justify-center">
-        <video autoPlay loop muted playsInline className="w-full h-auto object-contain">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="w-full h-auto object-contain"
+          onError={(e) => {
+            console.error("Shuffle video error:", e)
+          }}
+          onLoadStart={() => {
+            console.log("Shuffle video load started")
+          }}
+          onCanPlay={() => {
+            console.log("Shuffle video can play")
+          }}
+        >
           {cachedShuffleSrc && <source src={cachedShuffleSrc} type="video/mp4" />}
-          <source src="/shuffle.mp4" type="video/mp4" />
+          <source src="/shuffle.MP4" type="video/mp4" />
           {/* Fallback animation if video fails */}
-          <div className="relative">
+          <div className="relative w-20 h-28 mx-auto">
             <div className="w-20 h-28 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg animate-spin"></div>
             <div className="absolute top-2 left-2 w-16 h-24 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-lg animate-pulse"></div>
           </div>
