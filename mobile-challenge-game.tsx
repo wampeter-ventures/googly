@@ -688,68 +688,70 @@ export default function Component() {
 
   if (gameState === "menu") {
     return (
-      <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-6">
-        <div className="text-center space-y-6 w-full max-w-[280px]">
-          {/* Game Icon */}
-          <div className="w-16 h-16 mx-auto bg-black rounded-lg flex items-center justify-center">
-            <div className="grid grid-cols-3 gap-1">
-              <div className="w-3 h-3 bg-yellow-400 rounded-sm"></div>
-              <div className="w-3 h-3 bg-green-400 rounded-sm"></div>
-              <div className="w-3 h-3 bg-gray-300 rounded-sm"></div>
-              <div className="w-3 h-3 bg-blue-400 rounded-sm"></div>
-              <div className="w-3 h-3 bg-red-400 rounded-sm"></div>
-              <div className="w-3 h-3 bg-purple-400 rounded-sm"></div>
-              <div className="w-3 h-3 bg-orange-400 rounded-sm"></div>
-              <div className="w-3 h-3 bg-pink-400 rounded-sm"></div>
-              <div className="w-3 h-3 bg-cyan-400 rounded-sm"></div>
-            </div>
-          </div>
+      <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-center p-6">
+        <Card className="w-full max-w-[320px] bg-white shadow-lg border-0">
+          <CardContent className="p-8">
+            <div className="text-center space-y-6">
+              {/* Animated Logo Video */}
+              <div className="w-full max-w-[200px] mx-auto">
+                <video autoPlay loop muted playsInline className="w-full h-auto" style={{ maxHeight: "120px" }}>
+                  <source src="/googly-logo.mov" type="video/mp4" />
+                  <source src="/googly-logo.mov" type="video/quicktime" />
+                  {/* Fallback text if video doesn't load */}
+                  <div className="text-3xl font-bold text-black font-jua whitespace-nowrap">The Googly Game</div>
+                </video>
+              </div>
 
-          <h1 className="text-3xl font-bold text-black font-jua whitespace-nowrap">The Googly Game</h1>
-          <p className="text-gray-600 text-lg">Don't overthink it, just do the thing!</p>
+              <p className="text-gray-600 text-lg">
+                Don't overthink it
+                <br />
+                Just do the thing!
+              </p>
 
-          <div className="relative">
-            <div className="absolute inset-0 bg-white rounded-full opacity-30 animate-pulse blur-md"></div>
-            <Button
-              onClick={startNewGame}
-              className="relative w-full bg-black hover:bg-gray-800 text-white font-medium text-lg py-4 rounded-full"
-            >
-              Play
-            </Button>
-          </div>
+              <div className="relative">
+                <div className="absolute inset-0 bg-white rounded-full opacity-30 animate-pulse blur-md"></div>
+                <Button
+                  onClick={startNewGame}
+                  className="relative w-full bg-black hover:bg-gray-800 text-white font-medium text-lg py-4 rounded-full"
+                >
+                  Play
+                </Button>
+              </div>
 
-          <Button
-            onClick={() => setGameState("stats")}
-            className="w-full bg-white hover:bg-gray-50 text-black border border-gray-300 font-medium text-lg py-4 rounded-full flex items-center justify-center gap-2"
-          >
-            <BarChart3 className="w-5 h-5" />
-            Statistics
-          </Button>
-
-          <div className="text-sm text-gray-500 space-y-1">
-            <div>June 25, 2025</div>
-            <div>No. 1467</div>
-            <div>
-              Curated by Dan from{" "}
-              <a
-                href="https://maps.google.com/?q=Begur,Spain"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-slate-600 hover:underline"
+              <Button
+                onClick={() => setGameState("stats")}
+                className="w-full bg-white hover:bg-gray-50 text-black border border-gray-300 font-medium text-lg py-4 rounded-full flex items-center justify-center gap-2"
               >
-                Begur
-              </a>
+                <BarChart3 className="w-5 h-5" />
+                Statistics
+              </Button>
+
+              <div className="text-sm text-gray-500 space-y-1">
+                <div>June 25, 2025</div>
+                <div>No. 1467</div>
+                <div>
+                  Curated by Dan from{" "}
+                  <a
+                    href="https://maps.google.com/?q=Begur,Spain"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-slate-600 hover:underline"
+                  >
+                    Begur
+                  </a>
+                </div>
+                <div>
+                  <button
+                    onClick={() => alert("Coming soon! Create your own custom deck of challenges.")}
+                    className="text-slate-600 hover:underline cursor-pointer"
+                  >
+                    Create Your Own
+                  </button>
+                </div>
+              </div>
             </div>
-            <div>
-              <button
-                onClick={() => alert("Coming soon! Create your own custom deck of challenges.")}
-                className="text-slate-600 hover:underline cursor-pointer"
-              >
-                Create Your Own
-              </button>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -1150,14 +1152,10 @@ export default function Component() {
             <Button
               onClick={() => setGameState("menu")}
               className="w-full bg-black hover:bg-gray-800 text-white font-medium text-lg py-4 rounded-full"
-            >
-              Play Again?
-            </Button>
+            />
           </div>
         </div>
       </div>
     )
   }
-
-  return null
 }
