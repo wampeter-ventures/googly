@@ -689,12 +689,18 @@ export default function Component() {
 
   if (gameState === "menu") {
     return (
-      <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-center p-6">
-        <Card className="w-full max-w-[320px] bg-white shadow-lg border-0">
-          <CardContent className="p-8">
-            <div className="text-center space-y-6">
+      <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-center p-4">
+        <Card
+          className="w-full max-w-none mx-4 bg-white shadow-lg border-0"
+          style={{ minHeight: "calc(100vh - 2rem)" }}
+        >
+          <CardContent
+            className="p-8 flex flex-col justify-center items-center h-full"
+            style={{ minHeight: "calc(100vh - 4rem)" }}
+          >
+            <div className="text-center space-y-8 w-full max-w-sm">
               {/* Animated Logo Video with fallback */}
-              <div className="w-full max-w-[200px] mx-auto">
+              <div className="w-full max-w-[240px] mx-auto">
                 {!videoError ? (
                   <video
                     autoPlay
@@ -702,61 +708,49 @@ export default function Component() {
                     muted
                     playsInline
                     className="w-full h-auto"
-                    style={{ maxHeight: "120px" }}
+                    style={{ maxHeight: "140px" }}
                     onError={() => setVideoError(true)}
                   >
                     <source src="/googly-logo.mp4" type="video/mp4" />
                     <source src="/googly-logo.webm" type="video/webm" />
-                    <source src="/googly-logo.mov" type="video/quicktime" />
                     {/* Fallback content */}
                     <div className="text-3xl font-bold text-black font-jua whitespace-nowrap">The Googly Game</div>
                   </video>
                 ) : (
                   /* Fallback when video fails to load */
-                  <div className="w-full flex flex-col items-center justify-center py-4">
-                    <div className="w-16 h-16 mx-auto bg-black rounded-lg flex items-center justify-center mb-4">
-                      <div className="grid grid-cols-3 gap-1">
-                        <div className="w-3 h-3 bg-yellow-400 rounded-sm"></div>
-                        <div className="w-3 h-3 bg-green-400 rounded-sm"></div>
-                        <div className="w-3 h-3 bg-gray-300 rounded-sm"></div>
-                        <div className="w-3 h-3 bg-blue-400 rounded-sm"></div>
-                        <div className="w-3 h-3 bg-red-400 rounded-sm"></div>
-                        <div className="w-3 h-3 bg-purple-400 rounded-sm"></div>
-                        <div className="w-3 h-3 bg-orange-400 rounded-sm"></div>
-                        <div className="w-3 h-3 bg-pink-400 rounded-sm"></div>
-                        <div className="w-3 h-3 bg-cyan-400 rounded-sm"></div>
-                      </div>
-                    </div>
-                    <h1 className="text-3xl font-bold text-black font-jua whitespace-nowrap">The Googly Game</h1>
+                  <div className="w-full flex flex-col items-center justify-center py-6">
+                    <img src="/googly-game-logo.png" alt="The Googly Game" className="w-full max-w-[240px] h-auto" />
                   </div>
                 )}
               </div>
 
-              <p className="text-gray-600 text-lg">
+              <p className="text-gray-600 text-xl leading-relaxed">
                 Don't overthink it
                 <br />
                 Just do the thing!
               </p>
 
-              <div className="relative">
-                <div className="absolute inset-0 bg-white rounded-full opacity-30 animate-pulse blur-md"></div>
+              <div className="space-y-4">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-white rounded-full opacity-30 animate-pulse blur-md"></div>
+                  <Button
+                    onClick={startNewGame}
+                    className="relative w-full bg-black hover:bg-gray-800 text-white font-medium text-xl py-6 rounded-full"
+                  >
+                    Play
+                  </Button>
+                </div>
+
                 <Button
-                  onClick={startNewGame}
-                  className="relative w-full bg-black hover:bg-gray-800 text-white font-medium text-lg py-4 rounded-full"
+                  onClick={() => setGameState("stats")}
+                  className="w-full bg-white hover:bg-gray-50 text-black border border-gray-300 font-medium text-xl py-6 rounded-full flex items-center justify-center gap-2"
                 >
-                  Play
+                  <BarChart3 className="w-6 h-6" />
+                  Statistics
                 </Button>
               </div>
 
-              <Button
-                onClick={() => setGameState("stats")}
-                className="w-full bg-white hover:bg-gray-50 text-black border border-gray-300 font-medium text-lg py-4 rounded-full flex items-center justify-center gap-2"
-              >
-                <BarChart3 className="w-5 h-5" />
-                Statistics
-              </Button>
-
-              <div className="text-sm text-gray-500 space-y-1">
+              <div className="text-base text-gray-500 space-y-2 pt-4">
                 <div>June 25, 2025</div>
                 <div>No. 1467</div>
                 <div>
