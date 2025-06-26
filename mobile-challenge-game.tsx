@@ -4,103 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { BarChart3, HelpCircle } from "lucide-react"
-
-// Cache management utilities
-const CACHE_PREFIX = "googly-game-cache-"
-const CACHE_VERSION = "1.0"
-const MAX_CACHE_SIZE = 500 * 1024 * 1024 // 500MB limit
-
-interface CacheItem {
-  data: string
-  timestamp: number
-  size: number
-}
-
-const cacheManager = {
-  async cacheResource(url: string): Promise<string> {
-    const cacheKey = CACHE_PREFIX + btoa(url)
-    const cached = localStorage.getItem(cacheKey)
-    if (cached) {
-      try {
-        const item: CacheItem = JSON.parse(cached)
-        return item.data
-      } catch (e) {
-        localStorage.removeItem(cacheKey)
-      }
-    }
-    try {
-      const response = await fetch(url)
-      if (!response.ok) throw new Error("Failed to fetch")
-      const blob = await response.blob()
-      const reader = new FileReader()
-      return new Promise((resolve, reject) => {
-        reader.onload = () => {
-          const dataUrl = reader.result as string
-          const item: CacheItem = { data: dataUrl, timestamp: Date.now(), size: dataUrl.length }
-          this.ensureCacheSpace(item.size)
-          try {
-            localStorage.setItem(cacheKey, JSON.stringify(item))
-            resolve(dataUrl)
-          } catch (e) {
-            resolve(dataUrl)
-          }
-        }
-        reader.onerror = () => reject(new Error("Failed to read blob"))
-        reader.readAsDataURL(blob)
-      })
-    } catch (error) {
-      console.warn("Failed to cache resource:", url, error)
-      return url
-    }
-  },
-  ensureCacheSpace(neededSize: number) {
-    const cacheKeys = Object.keys(localStorage).filter((key) => key.startsWith(CACHE_PREFIX))
-    let totalSize = 0
-    cacheKeys.forEach((key) => {
-      try {
-        const item: CacheItem = JSON.parse(localStorage.getItem(key) || "{}")
-        totalSize += item.size || 0
-      } catch (e) {
-        localStorage.removeItem(key)
-      }
-    })
-    if (totalSize + neededSize > MAX_CACHE_SIZE) {
-      const items = cacheKeys
-        .map((key) => {
-          try {
-            const item: CacheItem = JSON.parse(localStorage.getItem(key) || "{}")
-            return { key, timestamp: item.timestamp || 0, size: item.size || 0 }
-          } catch (e) {
-            localStorage.removeItem(key)
-            return null
-          }
-        })
-        .filter(Boolean)
-        .sort((a, b) => a!.timestamp - b!.timestamp)
-      let removedSize = 0
-      for (const item of items) {
-        if (totalSize - removedSize + neededSize <= MAX_CACHE_SIZE) break
-        localStorage.removeItem(item!.key)
-        removedSize += item!.size
-      }
-    }
-  },
-  clearCache() {
-    const cacheKeys = Object.keys(localStorage).filter((key) => key.startsWith(CACHE_PREFIX))
-    cacheKeys.forEach((key) => localStorage.removeItem(key))
-  },
-  getCacheSize(): number {
-    const cacheKeys = Object.keys(localStorage).filter((key) => key.startsWith(CACHE_PREFIX))
-    return cacheKeys.reduce((total, key) => {
-      try {
-        const item: CacheItem = JSON.parse(localStorage.getItem(key) || "{}")
-        return total + (item.size || 0)
-      } catch (e) {
-        return total
-      }
-    }, 0)
-  },
-}
+import GooglyEyesAnimation from "@/components/googly-eyes-animation"
 
 const challengeCards = [
   // Face Off Cards
@@ -759,10 +663,6 @@ export default function Component() {
     gamesPlayed: 0,
   })
   const [videoError, setVideoError] = useState(false)
-  const [cachedVideoSrc, setCachedVideoSrc] = useState<string>("")
-  const [cachedImageSrc, setCachedImageSrc] = useState<string>("")
-  const [isLoadingAssets, setIsLoadingAssets] = useState(true)
-  const [cachedShuffleSrc, setCachedShuffleSrc] = useState<string>("")
   const [showHint, setShowHint] = useState(false)
   const [revealedCards, setRevealedCards] = useState<TurnResult[]>([])
 
@@ -878,38 +778,11 @@ export default function Component() {
     }
   }, [gameState, revealedCards, turnResults])
 
-  useEffect(() => {
-    const cacheAssets = async () => {
-      setIsLoadingAssets(true)
-      try {
-        const videoPromises = [
-          cacheManager.cacheResource("/googly-logo.mp4"),
-          cacheManager.cacheResource("/shuffle.mp4"),
-        ]
-        const imagePromise = cacheManager.cacheResource("/googly-game-logo.png")
-        const [mp4Src, shuffleSrc, imageSrc] = await Promise.allSettled([...videoPromises, imagePromise])
-        if (mp4Src.status === "fulfilled") setCachedVideoSrc(mp4Src.value)
-        if (imageSrc.status === "fulfilled") setCachedImageSrc(imageSrc.value)
-        if (shuffleSrc.status === "fulfilled") setCachedShuffleSrc(shuffleSrc.value)
-      } catch (error) {
-        console.warn("Failed to cache some assets:", error)
-      } finally {
-        setIsLoadingAssets(false)
-      }
-    }
-    cacheAssets()
-  }, [])
-
   const ShufflingAnimation = () => (
     <div className="flex flex-col items-center justify-center h-64 space-y-4">
       <div className="w-[80vw] max-w-md h-auto flex items-center justify-center">
-        <video autoPlay loop muted playsInline className="w-full h-auto object-contain">
-          {cachedShuffleSrc && <source src={cachedShuffleSrc} type="video/mp4" />}
+        <video autoPlay loop muted playsInline className="w-full h-auto object-contain" poster="/shuffle-fallback.png">
           <source src="/shuffle.mp4" type="video/mp4" />
-          <div className="relative w-20 h-28 mx-auto">
-            <div className="w-20 h-28 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg animate-spin"></div>
-            <div className="absolute top-2 left-2 w-16 h-24 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-lg animate-pulse"></div>
-          </div>
         </video>
       </div>
       <div className="text-2xl font-bold text-gray-800 animate-bounce">🎴 Shuffling cards!</div>
@@ -930,7 +803,9 @@ export default function Component() {
           >
             <div className="text-center space-y-8 w-full max-w-sm">
               <div className="w-full max-w-[240px] mx-auto">
-                {!videoError && !isLoadingAssets ? (
+                {videoError ? (
+                  <img src="/googly-game-logo.png" alt="The Googly Game" className="w-full max-w-[240px] h-auto" />
+                ) : (
                   <video
                     autoPlay
                     loop
@@ -938,25 +813,11 @@ export default function Component() {
                     playsInline
                     className="w-full h-auto"
                     style={{ maxHeight: "140px" }}
+                    poster="/googly-game-logo.png"
                     onError={() => setVideoError(true)}
                   >
-                    {cachedVideoSrc && <source src={cachedVideoSrc} type="video/mp4" />}
                     <source src="/googly-logo.mp4" type="video/mp4" />
-                    <div className="text-3xl font-bold text-black font-jua whitespace-nowrap">The Googly Game</div>
                   </video>
-                ) : isLoadingAssets ? (
-                  <div className="w-full flex flex-col items-center justify-center py-6">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mb-2"></div>
-                    <div className="text-sm text-gray-500">Loading...</div>
-                  </div>
-                ) : (
-                  <div className="w-full flex flex-col items-center justify-center py-6">
-                    <img
-                      src={cachedImageSrc || "/googly-game-logo.png"}
-                      alt="The Googly Game"
-                      className="w-full max-w-[240px] h-auto"
-                    />
-                  </div>
                 )}
               </div>
               <p className="text-gray-600 text-xl leading-relaxed">
@@ -1191,7 +1052,8 @@ export default function Component() {
   if (gameState === "finalRecap") {
     return (
       <div className="min-h-screen bg-[#F7F2E8] p-4 flex flex-col items-center justify-center relative overflow-hidden">
-        <h1 className="text-4xl font-bold text-black mb-8 z-10">Your Game!</h1>
+        <GooglyEyesAnimation />
+        <h1 className="text-4xl font-bold text-black mb-8 z-10 drop-shadow-lg">Your Game!</h1>
         <div className="relative w-full h-[400px]">
           {revealedCards.map((result, index) => (
             <div
