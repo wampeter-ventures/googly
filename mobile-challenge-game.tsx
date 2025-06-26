@@ -6,6 +6,26 @@ import { Card, CardContent } from "@/components/ui/card"
 import { BarChart3, HelpCircle } from "lucide-react"
 import GooglyEyesAnimation from "@/components/googly-eyes-animation"
 
+// Simple video caching for PWA compatibility
+const videoCache = new Map<string, string>()
+
+const cacheVideo = async (url: string): Promise<string> => {
+  if (videoCache.has(url)) {
+    return videoCache.get(url)!
+  }
+
+  try {
+    const response = await fetch(url)
+    const blob = await response.blob()
+    const objectUrl = URL.createObjectURL(blob)
+    videoCache.set(url, objectUrl)
+    return objectUrl
+  } catch (error) {
+    console.warn("Failed to cache video:", error)
+    return url
+  }
+}
+
 const challengeCards = [
   // Face Off Cards
   {
@@ -665,12 +685,26 @@ export default function Component() {
   const [videoError, setVideoError] = useState(false)
   const [showHint, setShowHint] = useState(false)
   const [revealedCards, setRevealedCards] = useState<TurnResult[]>([])
+  const [cachedShuffleUrl, setCachedShuffleUrl] = useState<string>("")
 
   useEffect(() => {
     const savedStats = localStorage.getItem("googly-game-stats")
     if (savedStats) {
       setStats(JSON.parse(savedStats))
     }
+  }, [])
+
+  useEffect(() => {
+    const cacheShuffleVideo = async () => {
+      try {
+        const cachedUrl = await cacheVideo("/shuffle.mp4")
+        setCachedShuffleUrl(cachedUrl)
+      } catch (error) {
+        console.warn("Failed to cache shuffle video:", error)
+        setCachedShuffleUrl("/shuffle.mp4")
+      }
+    }
+    cacheShuffleVideo()
   }, [])
 
   const saveStats = (newStats: Stats) => {
@@ -782,7 +816,7 @@ export default function Component() {
     <div className="flex flex-col items-center justify-center h-64 space-y-4">
       <div className="w-[80vw] max-w-md h-auto flex items-center justify-center">
         <video autoPlay loop muted playsInline className="w-full h-auto object-contain" poster="/shuffle-fallback.png">
-          <source src="/shuffle.mp4" type="video/mp4" />
+          <source src={cachedShuffleUrl || "/shuffle.mp4"} type="video/mp4" />
         </video>
       </div>
       <div className="text-2xl font-bold text-gray-800 animate-bounce">🎴 Shuffling cards!</div>
