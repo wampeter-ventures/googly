@@ -1101,7 +1101,7 @@ export default function Component() {
         const videoPromises = [
           cacheManager.cacheResource("/googly-logo.mp4"),
           cacheManager.cacheResource("/googly-logo.webm"),
-          cacheManager.cacheResource("/shuffle.MP4"), // Preload shuffle video
+          cacheManager.cacheResource("/shuffle.mp4"), // Preload shuffle video
         ]
 
         // Cache image fallback
@@ -1154,7 +1154,7 @@ export default function Component() {
           }}
         >
           {cachedShuffleSrc && <source src={cachedShuffleSrc} type="video/mp4" />}
-          <source src="/shuffle.MP4" type="video/mp4" />
+          <source src="/shuffle.mp4" type="video/mp4" />
           {/* Fallback animation if video fails */}
           <div className="relative w-20 h-28 mx-auto">
             <div className="w-20 h-28 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg animate-spin"></div>
