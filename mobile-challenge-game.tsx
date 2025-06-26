@@ -1378,16 +1378,16 @@ export default function Component() {
               <ShufflingAnimation />
             </div>
           ) : (
-            <div className="space-y-4 mb-6">
+            <div className="space-y-6 mb-6">
               {currentCards.map((card, index) => (
                 <Card
                   key={index}
-                  className={`${card.color} border-2 cursor-pointer transform transition-all duration-300 ${
+                  className={`${card.color} border-2 cursor-pointer transform transition-all duration-300 min-h-[200px] ${
                     selectedCard === card ? "scale-105 ring-4 ring-black shadow-2xl" : "hover:scale-102 shadow-lg"
                   }`}
                   onClick={() => selectCard(card)}
                 >
-                  <CardContent className="p-4 relative overflow-hidden">
+                  <CardContent className="p-6 relative overflow-hidden">
                     <div className="absolute inset-0 opacity-10">
                       <div className="absolute top-2 right-2 text-4xl">{card.icon}</div>
                     </div>
@@ -1398,7 +1398,7 @@ export default function Component() {
                           {card.category}
                         </span>
                       </div>
-                      <p className="font-medium text-gray-900 leading-tight">{card.challenge}</p>
+                      <p className="text-lg font-medium text-gray-900 leading-tight">{card.challenge}</p>
                       {selectedCard === card && card.hint && (
                         <>
                           {!showHint && (
