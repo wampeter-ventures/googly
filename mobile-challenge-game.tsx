@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { BarChart3, HelpCircle } from "lucide-react"
 import GooglyEyesAnimation from "@/components/googly-eyes-animation"
+import CountdownTimer from "@/components/countdown-timer"
 
 // Simple video caching for PWA compatibility
 const videoCache = new Map<string, string>()
@@ -30,37 +31,42 @@ const challengeCards = [
   // Face Off Cards
   {
     category: "Face Off",
-    challenge: "Pick a partner and switch off naming these things until one person falters: Foods That Are Red",
+    challenge:
+      "Go around the circle, each person naming a different type of: Food That Is Red. The last person standing wins!",
     color: "bg-gradient-to-br from-orange-100 to-red-200 border-orange-400",
     icon: "⚔️",
   },
   {
     category: "Face Off",
-    challenge: "Pick a partner and switch off naming types of cheese until one person falters.",
+    challenge: "Go around the circle, each person naming a different type of: Cheese. The last person standing wins!",
     color: "bg-gradient-to-br from-orange-100 to-red-200 border-orange-400",
     icon: "⚔️",
   },
   {
     category: "Face Off",
-    challenge: "Pick a partner and switch off naming things that fly but aren't birds until one person falters.",
+    challenge:
+      "Go around the circle, each person naming something that: Flies but isn't a bird. The last person standing wins!",
     color: "bg-gradient-to-br from-orange-100 to-red-200 border-orange-400",
     icon: "⚔️",
   },
   {
     category: "Face Off",
-    challenge: "Pick a partner and switch off naming colors that aren't primary until one person falters.",
+    challenge:
+      "Go around the circle, each person naming a different: Color that isn't primary. The last person standing wins!",
     color: "bg-gradient-to-br from-orange-100 to-red-200 border-orange-400",
     icon: "⚔️",
   },
   {
     category: "Face Off",
-    challenge: "Pick a partner and switch off naming animals that live in the desert until one person falters.",
+    challenge:
+      "Go around the circle, each person naming a different: Animal that lives in the desert. The last person standing wins!",
     color: "bg-gradient-to-br from-orange-100 to-red-200 border-orange-400",
     icon: "⚔️",
   },
   {
     category: "Face Off",
-    challenge: "Pick a partner and switch off naming breakfast foods until one person falters.",
+    challenge:
+      "Go around the circle, each person naming a different type of: Breakfast food. The last person standing wins!",
     color: "bg-gradient-to-br from-orange-100 to-red-200 border-orange-400",
     icon: "⚔️",
   },
@@ -71,12 +77,14 @@ const challengeCards = [
     challenge: "Say the alphabet backwards in under 30 seconds.",
     color: "bg-gradient-to-br from-amber-100 to-yellow-200 border-amber-400",
     icon: "⚡",
+    timer: 30,
   },
   {
     category: "Think Fast",
     challenge: "Name 3 superheroes in 10 seconds.",
     color: "bg-gradient-to-br from-amber-100 to-yellow-200 border-amber-400",
     icon: "⚡",
+    timer: 10,
   },
   {
     category: "Think Fast",
@@ -592,7 +600,7 @@ const challengeCards = [
 type GameState = "menu" | "playing" | "ranking" | "finalRecap" | "stats"
 
 interface TurnResult {
-  card: (typeof challengeCards)[0]
+  card: (typeof challengeCards)[0] & { timer?: number }
   score: number
   emoji: string
 }
@@ -668,9 +676,9 @@ const curators = [
 export default function Component() {
   const [gameState, setGameState] = useState<GameState>("menu")
   const [currentTurn, setCurrentTurn] = useState(1)
-  const [shuffledCards, setShuffledCards] = useState<typeof challengeCards>([])
-  const [currentCards, setCurrentCards] = useState<typeof challengeCards>([])
-  const [selectedCard, setSelectedCard] = useState<(typeof challengeCards)[0] | null>(null)
+  const [shuffledCards, setShuffledCards] = useState<(typeof challengeCards)[]>([])
+  const [currentCards, setCurrentCards] = useState<(typeof challengeCards)[]>([])
+  const [selectedCard, setSelectedCard] = useState<((typeof challengeCards)[0] & { timer?: number }) | null>(null)
   const [turnResults, setTurnResults] = useState<TurnResult[]>([])
   const [isShuffling, setIsShuffling] = useState(false)
   const [selectedRating, setSelectedRating] = useState<Rating | null>(null)
@@ -686,6 +694,8 @@ export default function Component() {
   const [showHint, setShowHint] = useState(false)
   const [revealedCards, setRevealedCards] = useState<TurnResult[]>([])
   const [cachedShuffleUrl, setCachedShuffleUrl] = useState<string>("")
+  const [isCountingDown, setIsCountingDown] = useState(false)
+  const [countdownComplete, setCountdownComplete] = useState(false)
 
   useEffect(() => {
     const savedStats = localStorage.getItem("googly-game-stats")
@@ -752,11 +762,13 @@ export default function Component() {
     setSelectedRating(null)
     setShowHint(false)
     setRevealedCards([])
+    setCountdownComplete(false)
+    setIsCountingDown(false)
     setGameState("playing")
     dealCards(shuffled, 1)
   }
 
-  const dealCards = (deck: typeof challengeCards, turn: number) => {
+  const dealCards = (deck: (typeof challengeCards)[], turn: number) => {
     setIsShuffling(true)
     setTimeout(() => {
       const cards = deck.slice((turn - 1) * 2, turn * 2)
@@ -765,9 +777,11 @@ export default function Component() {
     }, 5000)
   }
 
-  const selectCard = (card: (typeof challengeCards)[0]) => {
+  const selectCard = (card: (typeof challengeCards)[0] & { timer?: number }) => {
     setSelectedCard(card)
     setShowHint(false)
+    setCountdownComplete(false)
+    setIsCountingDown(false)
   }
 
   const nextTurn = () => {
@@ -797,6 +811,8 @@ export default function Component() {
         setSelectedCard(null)
         setSelectedRating(null)
         setShowHint(false)
+        setCountdownComplete(false)
+        setIsCountingDown(false)
         setGameState("playing")
         dealCards(shuffledCards, nextTurnNumber)
       }
@@ -953,10 +969,22 @@ export default function Component() {
   }
 
   if (gameState === "playing") {
+    const showStartButton = selectedCard?.timer && !countdownComplete && !isCountingDown
+    const showNextTurnButton = selectedCard && (!selectedCard.timer || countdownComplete)
+
     return (
       <div className="min-h-screen bg-[#F7F2E8] p-4 flex flex-col justify-center">
+        {isCountingDown && selectedCard?.timer && (
+          <CountdownTimer
+            duration={selectedCard.timer}
+            onComplete={() => {
+              setIsCountingDown(false)
+              setCountdownComplete(true)
+            }}
+          />
+        )}
         <div className="max-w-md mx-auto w-full">
-          <div className="text-center mb-6 pt-4">
+          <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-black mb-2">Round {currentTurn} of 8</h2>
             <p className="text-gray-600">Pick your challenge!</p>
           </div>
@@ -1015,17 +1043,29 @@ export default function Component() {
               ))}
             </div>
           )}
-          {selectedCard && !isShuffling && (
-            <div className="text-center space-y-2 mt-auto pb-4">
+          <div className="text-center space-y-2 mt-auto pb-4">
+            {showStartButton && (
               <Button
-                onClick={nextTurn}
-                className="w-full bg-black hover:bg-gray-800 text-white font-medium text-lg py-3 rounded-full"
+                onClick={() => setIsCountingDown(true)}
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-medium text-lg py-3 rounded-full"
               >
-                {selectedCard?.category === "Teamwork" ? "We did the thing!" : "I did the thing!"}
+                Start!
               </Button>
-              <p className="text-gray-500 text-sm">(pass to the next player)</p>
-            </div>
-          )}
+            )}
+            {showNextTurnButton && (
+              <>
+                <Button
+                  onClick={nextTurn}
+                  className="w-full bg-black hover:bg-gray-800 text-white font-medium text-lg py-3 rounded-full"
+                >
+                  {selectedCard?.category === "Teamwork" || selectedCard?.category === "Face Off"
+                    ? "We did the thing!"
+                    : "I did the thing!"}
+                </Button>
+                <p className="text-gray-500 text-sm">(pass to the next player)</p>
+              </>
+            )}
+          </div>
         </div>
       </div>
     )
@@ -1112,7 +1152,7 @@ export default function Component() {
         {revealedCards.length === 8 && (
           <div className="mt-8 z-10">
             <Button
-              onClick={startNewGame}
+              onClick={() => setGameState("menu")}
               className="bg-black hover:bg-gray-800 text-white font-medium text-xl px-10 py-5 rounded-full animate-fade-in"
             >
               Play Again?
