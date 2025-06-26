@@ -686,6 +686,16 @@ interface Stats {
   gamesPlayed: number
 }
 
+// Fisher-Yates Shuffle Algorithm
+function fisherYatesShuffle<T>(array: T[]): T[] {
+  const newArray = [...array]
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[newArray[i], newArray[j]] = [newArray[j], newArray[i]]
+  }
+  return newArray
+}
+
 const allRatings: Rating[] = [
   { emoji: "😐", score: 5 },
   { emoji: "🤔", score: 15 },
@@ -710,13 +720,14 @@ const allRatings: Rating[] = [
 ]
 
 const ratingsForDisplay: Rating[] = []
-const numColsForRatingGrid = 5 // Number of columns in the emoji grid
+const numColsForRatingGrid = 5
 const numRowsForRatingGrid = Math.ceil(allRatings.length / numColsForRatingGrid)
 
 for (let i = numRowsForRatingGrid - 1; i >= 0; i--) {
-  const startIndex = i * numColsForRatingGrid
-  const endIndex = Math.min(startIndex + numColsForRatingGrid, allRatings.length)
-  ratingsForDisplay.push(...allRatings.slice(startIndex, endIndex))
+  const rowStartIndex = i * numColsForRatingGrid
+  const rowEndIndex = Math.min(rowStartIndex + numColsForRatingGrid, allRatings.length)
+  const rowEmojis = allRatings.slice(rowStartIndex, rowEndIndex)
+  ratingsForDisplay.push(...rowEmojis) // This already adds them in the correct row-by-row order for the grid
 }
 
 const curators = [
@@ -799,7 +810,7 @@ export default function Component() {
   }
 
   const startNewGame = () => {
-    const shuffled = [...challengeCards].sort(() => Math.random() - 0.5)
+    const shuffled = fisherYatesShuffle(challengeCards) // Use Fisher-Yates shuffle
     setShuffledCards(shuffled)
     setCurrentTurn(1)
     setTurnResults([])
@@ -1052,12 +1063,16 @@ export default function Component() {
     return (
       <div className="min-h-screen bg-[#F7F2E8] p-4 flex flex-col justify-center">
         <div className="max-w-md mx-auto w-full">
-          <div className="text-center mb-6">
+          <div className="text-center mb-6 pt-4">
+            {" "}
+            {/* Ensure pt-4 for some top space */}
             <h2 className="text-2xl font-bold text-black mb-2">Round {currentTurn} of 8</h2>
             <p className="text-gray-600">Pick your challenge!</p>
           </div>
           {isShuffling ? (
-            <div className="mt-8">
+            <div className="mt-12">
+              {" "}
+              {/* Increased top margin here */}
               <ShufflingAnimation />
             </div>
           ) : (
@@ -1112,7 +1127,9 @@ export default function Component() {
             </div>
           )}
           {selectedCard && !isShuffling && (
-            <div className="text-center space-y-2">
+            <div className="text-center space-y-2 mt-auto pb-4">
+              {" "}
+              {/* Ensure button is at bottom */}
               <Button
                 onClick={nextTurn}
                 className="w-full bg-black hover:bg-gray-800 text-white font-medium text-lg py-3 rounded-full"
