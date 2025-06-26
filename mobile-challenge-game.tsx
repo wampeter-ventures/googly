@@ -686,7 +686,7 @@ interface Stats {
   gamesPlayed: number
 }
 
-const ratings: Rating[] = [
+const allRatings: Rating[] = [
   { emoji: "😐", score: 5 },
   { emoji: "🤔", score: 15 },
   { emoji: "🙂", score: 25 },
@@ -707,7 +707,17 @@ const ratings: Rating[] = [
   { emoji: "🌟", score: 99 },
   { emoji: "🎉", score: 99 },
   { emoji: "🦄", score: 100 },
-].reverse() // Reverse to have high scores at top right in a grid
+]
+
+const ratingsForDisplay: Rating[] = []
+const numColsForRatingGrid = 5 // Number of columns in the emoji grid
+const numRowsForRatingGrid = Math.ceil(allRatings.length / numColsForRatingGrid)
+
+for (let i = numRowsForRatingGrid - 1; i >= 0; i--) {
+  const startIndex = i * numColsForRatingGrid
+  const endIndex = Math.min(startIndex + numColsForRatingGrid, allRatings.length)
+  ratingsForDisplay.push(...allRatings.slice(startIndex, endIndex))
+}
 
 const curators = [
   "Dan from Spain",
@@ -1124,7 +1134,7 @@ export default function Component() {
           <h2 className="text-2xl font-bold text-black">How was it?</h2>
         </div>
         <div className="flex-grow grid grid-cols-5 gap-2 content-center">
-          {ratings.map((rating) => (
+          {ratingsForDisplay.map((rating) => (
             <button
               key={rating.emoji}
               onClick={() => setSelectedRating(rating)}
