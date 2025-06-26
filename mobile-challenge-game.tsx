@@ -19,8 +19,6 @@ interface CacheItem {
 const cacheManager = {
   async cacheResource(url: string): Promise<string> {
     const cacheKey = CACHE_PREFIX + btoa(url)
-
-    // Check if already cached
     const cached = localStorage.getItem(cacheKey)
     if (cached) {
       try {
@@ -30,32 +28,20 @@ const cacheManager = {
         localStorage.removeItem(cacheKey)
       }
     }
-
     try {
-      // Fetch and cache the resource
       const response = await fetch(url)
       if (!response.ok) throw new Error("Failed to fetch")
-
       const blob = await response.blob()
       const reader = new FileReader()
-
       return new Promise((resolve, reject) => {
         reader.onload = () => {
           const dataUrl = reader.result as string
-          const item: CacheItem = {
-            data: dataUrl,
-            timestamp: Date.now(),
-            size: dataUrl.length,
-          }
-
-          // Check cache size before storing
+          const item: CacheItem = { data: dataUrl, timestamp: Date.now(), size: dataUrl.length }
           this.ensureCacheSpace(item.size)
-
           try {
             localStorage.setItem(cacheKey, JSON.stringify(item))
             resolve(dataUrl)
           } catch (e) {
-            // If storage fails, return the data URL anyway
             resolve(dataUrl)
           }
         }
@@ -64,15 +50,12 @@ const cacheManager = {
       })
     } catch (error) {
       console.warn("Failed to cache resource:", url, error)
-      return url // Return original URL as fallback
+      return url
     }
   },
-
   ensureCacheSpace(neededSize: number) {
     const cacheKeys = Object.keys(localStorage).filter((key) => key.startsWith(CACHE_PREFIX))
     let totalSize = 0
-
-    // Calculate current cache size
     cacheKeys.forEach((key) => {
       try {
         const item: CacheItem = JSON.parse(localStorage.getItem(key) || "{}")
@@ -81,8 +64,6 @@ const cacheManager = {
         localStorage.removeItem(key)
       }
     })
-
-    // Remove oldest items if needed
     if (totalSize + neededSize > MAX_CACHE_SIZE) {
       const items = cacheKeys
         .map((key) => {
@@ -96,7 +77,6 @@ const cacheManager = {
         })
         .filter(Boolean)
         .sort((a, b) => a!.timestamp - b!.timestamp)
-
       let removedSize = 0
       for (const item of items) {
         if (totalSize - removedSize + neededSize <= MAX_CACHE_SIZE) break
@@ -105,12 +85,10 @@ const cacheManager = {
       }
     }
   },
-
   clearCache() {
     const cacheKeys = Object.keys(localStorage).filter((key) => key.startsWith(CACHE_PREFIX))
     cacheKeys.forEach((key) => localStorage.removeItem(key))
   },
-
   getCacheSize(): number {
     const cacheKeys = Object.keys(localStorage).filter((key) => key.startsWith(CACHE_PREFIX))
     return cacheKeys.reduce((total, key) => {
@@ -495,8 +473,6 @@ const challengeCards = [
     color: "bg-gradient-to-br from-purple-100 to-violet-200 border-purple-400",
     icon: "🎤",
   },
-  // Note: "Recite a nursery rhyme as fast as you possibly can without stumbling." was not found in the existing list.
-  // If it was intended to be a new card, it would be added here. For now, only existing cards are modified.
 
   // Act It Out Cards
   {
@@ -689,72 +665,69 @@ const challengeCards = [
   },
 ]
 
-type GameState = "menu" | "playing" | "ranking" | "cardRain" | "awards" | "finalRecap" | "stats"
-type RankingCategory = "surprising" | "funny" | "delightful"
+type GameState = "menu" | "playing" | "ranking" | "finalRecap" | "stats"
 
 interface TurnResult {
   card: (typeof challengeCards)[0]
-  rankings: {
-    surprising: number
-    funny: number
-    delightful: number
-  }
-}
-
-interface FallingCard {
-  id: number
-  card: (typeof challengeCards)[0]
-  x: number
-  y: number
-  rotation: number
-  speed: number
-}
-
-interface FloatingEmoji {
-  id: number
+  score: number
   emoji: string
-  x: number
-  y: number
-  vx: number
-  vy: number
-  rotation: number
-  scale: number
 }
 
-interface Firework {
-  id: number
-  x: number
-  y: number
-  particles: Array<{
-    x: number
-    y: number
-    vx: number
-    vy: number
-    color: string
-    life: number
-  }>
+interface Rating {
+  emoji: string
+  score: number
 }
 
 interface Stats {
-  totalSurprising: number
-  totalFunny: number
-  totalDelightful: number
+  totalScore: number
   currentStreak: number
   maxStreak: number
   lastPlayedDate: string
   gamesPlayed: number
 }
 
-const rankingEmojis = {
-  surprising: ["😐", "🤔", "😲", "🤯", "🫨"],
-  funny: ["😐", "😏", "😆", "😭", "😂"],
-  delightful: ["😶", "🙂", "😊", "😄", "🦄"],
+// Fisher-Yates Shuffle Algorithm
+function fisherYatesShuffle<T>(array: T[]): T[] {
+  const newArray = [...array]
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[newArray[i], newArray[j]] = [newArray[j], newArray[i]]
+  }
+  return newArray
 }
 
-const rankingLabels = {
-  surprising: ["Unexpected", "Um wow", "OMG", "Mind blown!", "Unbelievable!"],
-  funny: ["Heh", "Haha", "LOL", "Crying", "Can't breathe"],
-  delightful: ["Aww", "Sweet", "Splendid", "Heart melting", "Pure joy!"],
+const allRatings: Rating[] = [
+  { emoji: "😐", score: 5 },
+  { emoji: "🤔", score: 15 },
+  { emoji: "🙂", score: 25 },
+  { emoji: "😊", score: 35 },
+  { emoji: "😄", score: 45 },
+  { emoji: "😏", score: 50 },
+  { emoji: "😅", score: 58 },
+  { emoji: "😆", score: 65 },
+  { emoji: "😂", score: 72 },
+  { emoji: "🤣", score: 78 },
+  { emoji: "😮", score: 82 },
+  { emoji: "😲", score: 86 },
+  { emoji: "🤯", score: 90 },
+  { emoji: "🤩", score: 94 },
+  { emoji: "🥳", score: 97 },
+  { emoji: "💖", score: 98 },
+  { emoji: "✨", score: 99 },
+  { emoji: "🌟", score: 99 },
+  { emoji: "🎉", score: 99 },
+  { emoji: "🦄", score: 100 },
+]
+
+const ratingsForDisplay: Rating[] = []
+const numColsForRatingGrid = 5
+const numRowsForRatingGrid = Math.ceil(allRatings.length / numColsForRatingGrid)
+
+for (let i = numRowsForRatingGrid - 1; i >= 0; i--) {
+  const rowStartIndex = i * numColsForRatingGrid
+  const rowEndIndex = Math.min(rowStartIndex + numColsForRatingGrid, allRatings.length)
+  const rowEmojis = allRatings.slice(rowStartIndex, rowEndIndex)
+  ratingsForDisplay.push(...rowEmojis)
 }
 
 const curators = [
@@ -768,12 +741,6 @@ const curators = [
   "Zoe from Amsterdam",
 ]
 
-const awardEmojis = {
-  surprising: ["🤯", "😲", "🫨", "😱", "🤪", "🙃", "🤭"],
-  funny: ["😂", "🤣", "😆", "😹", "🤪", "🤭", "😜"],
-  delightful: ["🥰", "😍", "💖", "🌟", "🦋", "🌈", "✨"],
-}
-
 export default function Component() {
   const [gameState, setGameState] = useState<GameState>("menu")
   const [currentTurn, setCurrentTurn] = useState(1)
@@ -782,21 +749,10 @@ export default function Component() {
   const [selectedCard, setSelectedCard] = useState<(typeof challengeCards)[0] | null>(null)
   const [turnResults, setTurnResults] = useState<TurnResult[]>([])
   const [isShuffling, setIsShuffling] = useState(false)
-  const [currentRankings, setCurrentRankings] = useState({
-    surprising: 0,
-    funny: 0,
-    delightful: 0,
-  })
-  const [currentAward, setCurrentAward] = useState<RankingCategory | null>(null)
-  const [fallingCards, setFallingCards] = useState<FallingCard[]>([])
+  const [selectedRating, setSelectedRating] = useState<Rating | null>(null)
   const [currentCurator] = useState(curators[Math.floor(Math.random() * curators.length)])
-  const [floatingEmojis, setFloatingEmojis] = useState<FloatingEmoji[]>([])
-  const [fireworks, setFireworks] = useState<Firework[]>([])
-  const [awardWinners, setAwardWinners] = useState<{ [key in RankingCategory]: TurnResult } | null>(null)
   const [stats, setStats] = useState<Stats>({
-    totalSurprising: 0,
-    totalFunny: 0,
-    totalDelightful: 0,
+    totalScore: 0,
     currentStreak: 0,
     maxStreak: 0,
     lastPlayedDate: "",
@@ -808,8 +764,8 @@ export default function Component() {
   const [isLoadingAssets, setIsLoadingAssets] = useState(true)
   const [cachedShuffleSrc, setCachedShuffleSrc] = useState<string>("")
   const [showHint, setShowHint] = useState(false)
+  const [revealedCards, setRevealedCards] = useState<TurnResult[]>([])
 
-  // Load stats from localStorage on component mount
   useEffect(() => {
     const savedStats = localStorage.getItem("googly-game-stats")
     if (savedStats) {
@@ -817,61 +773,51 @@ export default function Component() {
     }
   }, [])
 
-  // Save stats to localStorage
   const saveStats = (newStats: Stats) => {
     setStats(newStats)
     localStorage.setItem("googly-game-stats", JSON.stringify(newStats))
   }
 
-  // Update stats when game completes
   const updateStats = (results: TurnResult[]) => {
     const today = new Date().toDateString()
-    const totalSurprising = results.reduce((sum, result) => sum + result.rankings.surprising, 0)
-    const totalFunny = results.reduce((sum, result) => sum + result.rankings.funny, 0)
-    const totalDelightful = results.reduce((sum, result) => sum + result.rankings.delightful, 0)
+    const totalScore = results.reduce((sum, result) => sum + result.score, 0)
 
     let newCurrentStreak = stats.currentStreak
     let newMaxStreak = stats.maxStreak
 
-    // Check if played yesterday or today
     const lastPlayed = new Date(stats.lastPlayedDate)
     const todayDate = new Date(today)
     const yesterday = new Date(todayDate)
     yesterday.setDate(yesterday.getDate() - 1)
 
     if (stats.lastPlayedDate === today) {
-      // Already played today, don't update streak
+      // No streak update
     } else if (stats.lastPlayedDate === yesterday.toDateString() || stats.lastPlayedDate === "") {
-      // Played yesterday or first time, continue/start streak
       newCurrentStreak += 1
       newMaxStreak = Math.max(newMaxStreak, newCurrentStreak)
     } else {
-      // Missed a day, reset streak
       newCurrentStreak = 1
     }
 
     const newStats: Stats = {
-      totalSurprising: stats.totalSurprising + totalSurprising,
-      totalFunny: stats.totalFunny + totalFunny,
-      totalDelightful: stats.totalDelightful + totalDelightful,
+      totalScore: stats.totalScore + totalScore,
       currentStreak: newCurrentStreak,
       maxStreak: newMaxStreak,
       lastPlayedDate: today,
       gamesPlayed: stats.gamesPlayed + 1,
     }
-
     saveStats(newStats)
   }
 
   const startNewGame = () => {
-    const shuffled = [...challengeCards].sort(() => Math.random() - 0.5)
+    const shuffled = fisherYatesShuffle(challengeCards)
     setShuffledCards(shuffled)
     setCurrentTurn(1)
     setTurnResults([])
     setSelectedCard(null)
-    setCurrentRankings({ surprising: 0, funny: 0, delightful: 0 })
-    setAwardWinners(null)
+    setSelectedRating(null)
     setShowHint(false)
+    setRevealedCards([])
     setGameState("playing")
     dealCards(shuffled, 1)
   }
@@ -882,12 +828,12 @@ export default function Component() {
       const cards = deck.slice((turn - 1) * 2, turn * 2)
       setCurrentCards(cards)
       setIsShuffling(false)
-    }, 5000) // Changed from 1500 to 5000 (5 seconds)
+    }, 5000)
   }
 
   const selectCard = (card: (typeof challengeCards)[0]) => {
     setSelectedCard(card)
-    setShowHint(false) // Reset hint visibility when a new card is selected
+    setShowHint(false)
   }
 
   const nextTurn = () => {
@@ -897,265 +843,69 @@ export default function Component() {
   }
 
   const submitRankings = () => {
-    if (selectedCard) {
+    if (selectedCard && selectedRating) {
       const newResult: TurnResult = {
         card: selectedCard,
-        rankings: currentRankings,
+        score: selectedRating.score,
+        emoji: selectedRating.emoji,
       }
       const newResults = [...turnResults, newResult]
       setTurnResults(newResults)
 
       if (currentTurn >= 8) {
-        // Update stats before finishing
         updateStats(newResults)
-        // Start card rain animation
-        setGameState("cardRain")
-        startCardRain(newResults)
+        const sortedResults = [...newResults].sort((a, b) => a.score - b.score)
+        setTurnResults(sortedResults)
+        setGameState("finalRecap")
       } else {
         const nextTurnNumber = currentTurn + 1
         setCurrentTurn(nextTurnNumber)
         setSelectedCard(null)
-        setCurrentRankings({ surprising: 0, funny: 0, delightful: 0 })
-        setShowHint(false) // Reset hint for next turn
+        setSelectedRating(null)
+        setShowHint(false)
         setGameState("playing")
         dealCards(shuffledCards, nextTurnNumber)
       }
     }
   }
 
-  const startCardRain = (results: TurnResult[]) => {
-    const cards: FallingCard[] = results.map((result, index) => ({
-      id: index,
-      card: result.card,
-      x: Math.random() * window.innerWidth,
-      y: -100,
-      rotation: Math.random() * 360,
-      speed: 2 + Math.random() * 3,
-    }))
-    setFallingCards(cards)
-
-    const animateCards = () => {
-      setFallingCards((prev) =>
-        prev.map((card) => ({
-          ...card,
-          y: card.y + card.speed,
-          rotation: card.rotation + 2,
-        })),
-      )
-    }
-
-    const interval = setInterval(animateCards, 50)
-
-    setTimeout(() => {
-      clearInterval(interval)
-      const winners = calculateAwardWinners(results)
-      setAwardWinners(winners)
-      setGameState("awards")
-      setCurrentAward("surprising")
-    }, 3000)
-  }
-
-  const nextAward = () => {
-    if (currentAward === "surprising") {
-      setCurrentAward("funny")
-    } else if (currentAward === "funny") {
-      setCurrentAward("delightful")
-    } else {
-      setGameState("finalRecap")
-    }
-  }
-
-  const calculateAwardWinners = (results: TurnResult[]) => {
-    const winners: { [key in RankingCategory]: TurnResult } = {
-      surprising: results[0],
-      funny: results[0],
-      delightful: results[0],
-    }
-
-    const usedCards = new Set<string>()
-    const categories: RankingCategory[] = ["surprising", "funny", "delightful"]
-
-    categories.forEach((category) => {
-      const availableResults = results.filter((result) => !usedCards.has(result.card.challenge))
-
-      if (availableResults.length > 0) {
-        const maxScore = Math.max(...availableResults.map((result) => result.rankings[category]))
-        const tiedResults = availableResults.filter((result) => result.rankings[category] === maxScore)
-
-        let winner: TurnResult
-
-        if (tiedResults.length === 1) {
-          winner = tiedResults[0]
-        } else {
-          const otherCategories = categories.filter((cat) => cat !== category) as RankingCategory[]
-          const tieBreakers = tiedResults.map((result) => ({
-            result,
-            tieBreakScore: otherCategories.reduce((sum, cat) => sum + result.rankings[cat], 0),
-          }))
-
-          const maxTieBreakScore = Math.max(...tieBreakers.map((tb) => tb.tieBreakScore))
-          const finalTiedResults = tieBreakers.filter((tb) => tb.tieBreakScore === maxTieBreakScore)
-
-          winner = finalTiedResults[0].result
-        }
-
-        winners[category] = winner
-        usedCards.add(winner.card.challenge)
-      }
-    })
-
-    return winners
-  }
-
-  const getAwardWinner = (category: RankingCategory) => {
-    return awardWinners?.[category] || turnResults[0]
-  }
-
-  // Animation effects for awards
   useEffect(() => {
-    if (gameState === "awards" && currentAward) {
-      const createFloatingEmojis = () => {
-        const emojis = awardEmojis[currentAward]
-        const newEmojis: FloatingEmoji[] = Array.from({ length: 15 }, (_, i) => ({
-          id: i,
-          emoji: emojis[Math.floor(Math.random() * emojis.length)],
-          x: Math.random() * window.innerWidth,
-          y: window.innerHeight + Math.random() * 200,
-          vx: (Math.random() - 0.5) * 2,
-          vy: -1 - Math.random() * 2,
-          rotation: Math.random() * 360,
-          scale: 0.5 + Math.random() * 1,
-        }))
-        setFloatingEmojis(newEmojis)
-      }
-
-      const createFirework = () => {
-        const newFirework: Firework = {
-          id: Date.now(),
-          x: Math.random() * window.innerWidth,
-          y: Math.random() * (window.innerHeight * 0.6),
-          particles: Array.from({ length: 8 }, () => ({
-            x: 0,
-            y: 0,
-            vx: (Math.random() - 0.5) * 10,
-            vy: (Math.random() - 0.5) * 10,
-            color: ["#FFD700", "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7"][Math.floor(Math.random() * 6)],
-            life: 1,
-          })),
-        }
-        setFireworks((prev) => [...prev, newFirework])
-      }
-
-      createFloatingEmojis()
-      createFirework()
-
-      const emojiInterval = setInterval(() => {
-        setFloatingEmojis((prev) =>
-          prev
-            .map((emoji) => ({
-              ...emoji,
-              x: emoji.x + emoji.vx,
-              y: emoji.y + emoji.vy,
-              rotation: emoji.rotation + 2,
-            }))
-            .filter((emoji) => emoji.y > -100),
-        )
-      }, 50)
-
-      const fireworkInterval = setInterval(() => {
-        setFireworks((prev) =>
-          prev
-            .map((firework) => ({
-              ...firework,
-              particles: firework.particles
-                .map((particle) => ({
-                  ...particle,
-                  x: particle.x + particle.vx,
-                  y: particle.y + particle.vy,
-                  vy: particle.vy + 0.2,
-                  life: particle.life - 0.02,
-                }))
-                .filter((particle) => particle.life > 0),
-            }))
-            .filter((firework) => firework.particles.length > 0),
-        )
-      }, 50)
-
-      const fireworkCreator = setInterval(createFirework, 1000)
-
-      return () => {
-        clearInterval(emojiInterval)
-        clearInterval(fireworkInterval)
-        clearInterval(fireworkCreator)
-      }
+    if (gameState === "finalRecap" && revealedCards.length < turnResults.length) {
+      const timer = setTimeout(() => {
+        setRevealedCards((prev) => [...prev, turnResults[prev.length]])
+      }, 500)
+      return () => clearTimeout(timer)
     }
-  }, [gameState, currentAward])
+  }, [gameState, revealedCards, turnResults])
 
-  // Cache assets on component mount - now includes shuffle video preloading
   useEffect(() => {
     const cacheAssets = async () => {
       setIsLoadingAssets(true)
-
       try {
-        // Cache all video files including shuffle video
         const videoPromises = [
           cacheManager.cacheResource("/googly-logo.mp4"),
-          cacheManager.cacheResource("/googly-logo.webm"),
-          cacheManager.cacheResource("/shuffle.mp4"), // Preload shuffle video
+          cacheManager.cacheResource("/shuffle.mp4"),
         ]
-
-        // Cache image fallback
         const imagePromise = cacheManager.cacheResource("/googly-game-logo.png")
-
-        const [mp4Src, webmSrc, shuffleSrc, imageSrc] = await Promise.allSettled([...videoPromises, imagePromise])
-
-        if (mp4Src.status === "fulfilled") {
-          setCachedVideoSrc(mp4Src.value)
-        }
-
-        if (imageSrc.status === "fulfilled") {
-          setCachedImageSrc(imageSrc.value)
-        }
-
-        // Store shuffle video - this is now preloaded on the home screen
-        if (shuffleSrc.status === "fulfilled") {
-          setCachedShuffleSrc(shuffleSrc.value)
-          console.log("Shuffle video cached successfully")
-        } else {
-          console.warn("Failed to cache shuffle video:", shuffleSrc)
-        }
+        const [mp4Src, shuffleSrc, imageSrc] = await Promise.allSettled([...videoPromises, imagePromise])
+        if (mp4Src.status === "fulfilled") setCachedVideoSrc(mp4Src.value)
+        if (imageSrc.status === "fulfilled") setCachedImageSrc(imageSrc.value)
+        if (shuffleSrc.status === "fulfilled") setCachedShuffleSrc(shuffleSrc.value)
       } catch (error) {
         console.warn("Failed to cache some assets:", error)
       } finally {
         setIsLoadingAssets(false)
       }
     }
-
     cacheAssets()
   }, [])
 
   const ShufflingAnimation = () => (
     <div className="flex flex-col items-center justify-center h-64 space-y-4">
       <div className="w-[80vw] max-w-md h-auto flex items-center justify-center">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="w-full h-auto object-contain"
-          onError={(e) => {
-            console.error("Shuffle video error:", e)
-          }}
-          onLoadStart={() => {
-            console.log("Shuffle video load started")
-          }}
-          onCanPlay={() => {
-            console.log("Shuffle video can play")
-          }}
-        >
+        <video autoPlay loop muted playsInline className="w-full h-auto object-contain">
           {cachedShuffleSrc && <source src={cachedShuffleSrc} type="video/mp4" />}
           <source src="/shuffle.mp4" type="video/mp4" />
-          {/* Fallback animation if video fails */}
           <div className="relative w-20 h-28 mx-auto">
             <div className="w-20 h-28 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg animate-spin"></div>
             <div className="absolute top-2 left-2 w-16 h-24 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-lg animate-pulse"></div>
@@ -1179,7 +929,6 @@ export default function Component() {
             style={{ minHeight: "calc(100vh - 4rem)" }}
           >
             <div className="text-center space-y-8 w-full max-w-sm">
-              {/* Animated Logo Video with fallback */}
               <div className="w-full max-w-[240px] mx-auto">
                 {!videoError && !isLoadingAssets ? (
                   <video
@@ -1193,18 +942,14 @@ export default function Component() {
                   >
                     {cachedVideoSrc && <source src={cachedVideoSrc} type="video/mp4" />}
                     <source src="/googly-logo.mp4" type="video/mp4" />
-                    <source src="/googly-logo.webm" type="video/webm" />
-                    {/* Fallback content */}
                     <div className="text-3xl font-bold text-black font-jua whitespace-nowrap">The Googly Game</div>
                   </video>
                 ) : isLoadingAssets ? (
-                  /* Loading state */
                   <div className="w-full flex flex-col items-center justify-center py-6">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mb-2"></div>
                     <div className="text-sm text-gray-500">Loading...</div>
                   </div>
                 ) : (
-                  /* Fallback when video fails to load */
                   <div className="w-full flex flex-col items-center justify-center py-6">
                     <img
                       src={cachedImageSrc || "/googly-game-logo.png"}
@@ -1214,13 +959,11 @@ export default function Component() {
                   </div>
                 )}
               </div>
-
               <p className="text-gray-600 text-xl leading-relaxed">
                 Don't overthink it
                 <br />
                 Just do the thing!
               </p>
-
               <div className="space-y-4">
                 <div className="relative">
                   <div className="absolute inset-0 bg-white rounded-full opacity-30 animate-pulse blur-md"></div>
@@ -1231,30 +974,17 @@ export default function Component() {
                     Play
                   </Button>
                 </div>
-
                 <Button
                   onClick={() => setGameState("stats")}
                   className="w-full bg-white hover:bg-gray-50 text-black border border-gray-300 font-medium text-xl py-6 rounded-full flex items-center justify-center gap-2"
                 >
-                  <BarChart3 className="w-6 h-6" />
-                  Statistics
+                  <BarChart3 className="w-6 h-6" /> Statistics
                 </Button>
               </div>
-
               <div className="text-base text-gray-500 space-y-2 pt-4">
-                <div>June 25, 2025</div>
-                <div>No. 1467</div>
-                <div>
-                  Curated by Dan from{" "}
-                  <a
-                    href="https://maps.google.com/?q=Begur,Spain"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-slate-600 hover:underline"
-                  >
-                    Begur
-                  </a>
-                </div>
+                <div>June 26, 2025</div>
+                <div>No. 1468</div>
+                <div>Curated by {currentCurator}</div>
                 <div>
                   <button
                     onClick={() => alert("Coming soon! Create your own custom deck of challenges.")}
@@ -1279,17 +1009,13 @@ export default function Component() {
             <h1 className="text-2xl font-bold text-black mb-2">Statistics</h1>
             <p className="text-gray-600">Your Googly Game journey</p>
           </div>
-
           <div className="space-y-4 mb-8">
-            {/* Games Played */}
             <Card className="bg-white border-2 border-gray-200">
               <CardContent className="p-4 text-center">
                 <div className="text-3xl font-bold text-black">{stats.gamesPlayed}</div>
                 <div className="text-sm text-gray-600">Played</div>
               </CardContent>
             </Card>
-
-            {/* Current Streak */}
             <div className="grid grid-cols-2 gap-4">
               <Card className="bg-white border-2 border-gray-200">
                 <CardContent className="p-4 text-center">
@@ -1297,7 +1023,6 @@ export default function Component() {
                   <div className="text-sm text-gray-600">Current Streak</div>
                 </CardContent>
               </Card>
-
               <Card className="bg-white border-2 border-gray-200">
                 <CardContent className="p-4 text-center">
                   <div className="text-2xl font-bold text-black">{stats.maxStreak}</div>
@@ -1305,52 +1030,22 @@ export default function Component() {
                 </CardContent>
               </Card>
             </div>
-
-            {/* Point Totals */}
             <div className="space-y-3">
               <h3 className="text-lg font-semibold text-black text-center">Total Points</h3>
-
               <Card className="bg-gradient-to-r from-yellow-100 to-yellow-200 border-2 border-yellow-300">
                 <CardContent className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="text-2xl">🤯</div>
+                    <div className="text-2xl">🏆</div>
                     <div>
-                      <div className="font-semibold text-gray-900">Surprise</div>
+                      <div className="font-semibold text-gray-900">Total Score</div>
                       <div className="text-sm text-gray-600">All-time total</div>
                     </div>
                   </div>
-                  <div className="text-2xl font-bold text-gray-900">{stats.totalSurprising}</div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-r from-red-100 to-red-200 border-2 border-red-300">
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="text-2xl">😂</div>
-                    <div>
-                      <div className="font-semibold text-gray-900">Fun</div>
-                      <div className="text-sm text-gray-600">All-time total</div>
-                    </div>
-                  </div>
-                  <div className="text-2xl font-bold text-gray-900">{stats.totalFunny}</div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-r from-pink-100 to-pink-200 border-2 border-pink-300">
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="text-2xl">🥰</div>
-                    <div>
-                      <div className="font-semibold text-gray-900">Delight</div>
-                      <div className="text-sm text-gray-600">All-time total</div>
-                    </div>
-                  </div>
-                  <div className="text-2xl font-bold text-gray-900">{stats.totalDelightful}</div>
+                  <div className="text-2xl font-bold text-gray-900">{stats.totalScore}</div>
                 </CardContent>
               </Card>
             </div>
           </div>
-
           <Button
             onClick={() => setGameState("menu")}
             className="w-full bg-black hover:bg-gray-800 text-white font-medium text-lg py-4 rounded-full"
@@ -1364,30 +1059,27 @@ export default function Component() {
 
   if (gameState === "playing") {
     return (
-      <div className="min-h-screen bg-[#F7F2E8] p-4">
-        <div className="max-w-md mx-auto">
+      <div className="min-h-screen bg-[#F7F2E8] p-4 flex flex-col justify-center">
+        <div className="max-w-md mx-auto w-full">
           <div className="text-center mb-6 pt-4">
             <h2 className="text-2xl font-bold text-black mb-2">Round {currentTurn} of 8</h2>
             <p className="text-gray-600">Pick your challenge!</p>
           </div>
-
           {isShuffling ? (
-            <div className="mt-20">
-              {" "}
-              {/* Changed from mt-8 to mt-20 to push shuffle animation down further */}
+            <div className="mt-12">
               <ShufflingAnimation />
             </div>
           ) : (
-            <div className="space-y-4 mb-6">
+            <div className="space-y-6 mb-6">
               {currentCards.map((card, index) => (
                 <Card
                   key={index}
-                  className={`${card.color} border-2 cursor-pointer transform transition-all duration-300 ${
+                  className={`${card.color} border-2 cursor-pointer transform transition-all duration-300 min-h-[200px] flex flex-col justify-center ${
                     selectedCard === card ? "scale-105 ring-4 ring-black shadow-2xl" : "hover:scale-102 shadow-lg"
                   }`}
                   onClick={() => selectCard(card)}
                 >
-                  <CardContent className="p-4 relative overflow-hidden">
+                  <CardContent className="p-6 relative overflow-hidden">
                     <div className="absolute inset-0 opacity-10">
                       <div className="absolute top-2 right-2 text-4xl">{card.icon}</div>
                     </div>
@@ -1398,7 +1090,7 @@ export default function Component() {
                           {card.category}
                         </span>
                       </div>
-                      <p className="font-medium text-gray-900 leading-tight">{card.challenge}</p>
+                      <p className="text-lg font-medium text-gray-900 leading-tight">{card.challenge}</p>
                       {selectedCard === card && card.hint && (
                         <>
                           {!showHint && (
@@ -1428,9 +1120,8 @@ export default function Component() {
               ))}
             </div>
           )}
-
           {selectedCard && !isShuffling && (
-            <div className="text-center space-y-2">
+            <div className="text-center space-y-2 mt-auto pb-4">
               <Button
                 onClick={nextTurn}
                 className="w-full bg-black hover:bg-gray-800 text-white font-medium text-lg py-3 rounded-full"
@@ -1447,258 +1138,91 @@ export default function Component() {
 
   if (gameState === "ranking") {
     return (
-      <div className="min-h-screen bg-[#F7F2E8] p-4">
-        <div className="max-w-md mx-auto">
-          {selectedCard && (
-            <div className="mb-4 mx-4 mt-8">
-              <Card className="bg-white border-2 border-gray-200">
+      <div className="min-h-screen bg-[#F7F2E8] p-4 flex flex-col">
+        <div className="text-center my-4">
+          <h2 className="text-2xl font-bold text-black">How was it?</h2>
+        </div>
+        <div className="flex-grow grid grid-cols-5 gap-2 content-center">
+          {ratingsForDisplay.map((rating) => (
+            <button
+              key={rating.emoji}
+              onClick={() => setSelectedRating(rating)}
+              className={`relative aspect-square flex items-center justify-center rounded-2xl transition-all duration-200 transform ${
+                selectedRating?.emoji === rating.emoji
+                  ? "bg-white/80 scale-110 shadow-2xl ring-4 ring-yellow-400"
+                  : "bg-white/40 hover:scale-105 hover:shadow-lg"
+              }`}
+            >
+              <span className="text-4xl md:text-5xl">{rating.emoji}</span>
+              {selectedRating?.emoji === rating.emoji && (
+                <div className="absolute inset-0 pointer-events-none">
+                  {[...Array(8)].map((_, i) => (
+                    <span
+                      key={i}
+                      className="absolute text-yellow-400 text-2xl animate-ping"
+                      style={{
+                        top: `${50 + 40 * Math.sin((i / 8) * 2 * Math.PI)}%`,
+                        left: `${50 + 40 * Math.cos((i / 8) * 2 * Math.PI)}%`,
+                        animationDelay: `${i * 0.1}s`,
+                      }}
+                    >
+                      ✨
+                    </span>
+                  ))}
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+        <div className="mt-auto py-4">
+          {selectedRating && (
+            <Button
+              onClick={submitRankings}
+              className="w-full bg-black hover:bg-gray-800 text-white font-medium text-lg py-4 rounded-full animate-fade-in"
+            >
+              {currentTurn >= 8 ? "See Results" : "Next Turn"}
+            </Button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  if (gameState === "finalRecap") {
+    return (
+      <div className="min-h-screen bg-[#F7F2E8] p-4 flex flex-col items-center justify-center relative overflow-hidden">
+        <h1 className="text-4xl font-bold text-black mb-8 z-10">Your Game!</h1>
+        <div className="relative w-full h-[400px]">
+          {revealedCards.map((result, index) => (
+            <div
+              key={result.card.challenge}
+              className="absolute w-full transition-all duration-500 ease-out"
+              style={{
+                top: "50%",
+                left: "50%",
+                transform: `translate(-50%, -50%) translateX(${index * 8 - (revealedCards.length - 1) * 4}px) translateY(${index * 8 - (revealedCards.length - 1) * 4}px) rotate(${(index - (revealedCards.length - 1) / 2) * 4}deg)`,
+                zIndex: index,
+              }}
+            >
+              <Card className={`${result.card.color} border-4 border-white shadow-2xl max-w-xs mx-auto`}>
                 <CardContent className="p-4 text-center">
-                  <div className="text-3xl mb-2">{selectedCard.icon}</div>
-                  <div className="font-semibold text-sm text-gray-600 mb-1">{selectedCard.category}</div>
-                  <p className="font-medium text-gray-900 text-sm">{selectedCard.challenge}</p>
+                  <div className="text-5xl mb-2">{result.emoji}</div>
+                  <p className="font-medium text-gray-800 text-sm">{result.card.challenge}</p>
                 </CardContent>
               </Card>
             </div>
-          )}
-
-          <div className="space-y-3 px-4">
-            {(Object.keys(rankingEmojis) as RankingCategory[]).map((category) => (
-              <div key={category} className="bg-white rounded-xl p-4 shadow-sm border flex-1">
-                <h3 className="text-black font-semibold mb-3 text-center text-sm flex items-center justify-center gap-2">
-                  {category === "surprising" && <span>Surprising</span>}
-                  {category === "funny" && <span>Funny</span>}
-                  {category === "delightful" && <span>Delightful</span>}
-                </h3>
-
-                <div className="flex gap-1 h-20">
-                  {rankingEmojis[category].map((emoji, index) => {
-                    const isSelected = currentRankings[category] === index + 1
-                    const colors = ["#ff6b6b", "#ffa726", "#ffca28", "#66bb6a", "#42a5f5"]
-                    const borderColors = ["#d32f2f", "#e65100", "#f57f17", "#388e3c", "#1976d2"]
-
-                    return (
-                      <button
-                        key={index}
-                        onClick={() =>
-                          setCurrentRankings({
-                            ...currentRankings,
-                            [category]: index + 1,
-                          })
-                        }
-                        className={`relative bg-white border-2 rounded-lg cursor-pointer transition-all duration-300 flex flex-col items-center justify-center gap-1 overflow-hidden min-w-0 p-1 z-10 ${
-                          isSelected
-                            ? "flex-[2.5] transform -translate-y-0.5 shadow-lg"
-                            : "flex-1 opacity-70 hover:bg-gray-50 hover:-translate-y-0.5"
-                        }`}
-                        style={{
-                          borderColor: isSelected ? colors[index] : "#e9ecef",
-                          color: isSelected ? colors[index] : "inherit",
-                          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                        }}
-                      >
-                        <div
-                          className="absolute top-0 left-0 right-0 h-1 transition-all duration-200"
-                          style={{
-                            backgroundColor: borderColors[index],
-                            height: isSelected ? "100%" : "3px",
-                            opacity: isSelected ? 0.1 : 1,
-                          }}
-                        />
-
-                        <div className="absolute top-0.5 right-0.5 w-4 h-4 bg-white/95 rounded-full flex items-center justify-center border border-black/10">
-                          <span className="text-xs font-semibold text-gray-600">{index + 1}</span>
-                        </div>
-
-                        <div className="text-lg">{emoji}</div>
-
-                        <div
-                          className={`absolute bottom-1 left-1/2 transform -translate-x-1/2 text-xs font-medium text-center leading-tight transition-all duration-300 w-full px-1 ${
-                            isSelected ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
-                          }`}
-                        >
-                          {rankingLabels[category][index]}
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="text-center mt-6 px-4">
+          ))}
+        </div>
+        {revealedCards.length === 8 && (
+          <div className="mt-8 z-10">
             <Button
-              onClick={submitRankings}
-              disabled={!currentRankings.surprising || !currentRankings.funny || !currentRankings.delightful}
-              className={`w-full font-medium text-lg py-3 rounded-full transition-all duration-200 ${
-                !currentRankings.surprising || !currentRankings.funny || !currentRankings.delightful
-                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  : "bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white hover:-translate-y-0.5 hover:shadow-lg"
-              }`}
-            >
-              {currentTurn >= 8 ? "We Did The Things!" : "Next Turn"}
-            </Button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (gameState === "cardRain") {
-    return (
-      <div className="min-h-screen bg-[#F7F2E8] relative overflow-hidden">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold text-black mb-4">Game complete!</h2>
-            <p className="text-gray-600">Calculating the results...</p>
-          </div>
-        </div>
-
-        {fallingCards.map((fallingCard) => (
-          <div
-            key={fallingCard.id}
-            className="absolute w-16 h-20 pointer-events-none"
-            style={{
-              left: fallingCard.x,
-              top: fallingCard.y,
-              transform: `rotate(${fallingCard.rotation}deg)`,
-            }}
-          >
-            <Card className={`${fallingCard.card.color} border-2 w-full h-full`}>
-              <CardContent className="p-1 flex items-center justify-center">
-                <div className="text-lg">{fallingCard.card.icon}</div>
-              </CardContent>
-            </Card>
-          </div>
-        ))}
-      </div>
-    )
-  }
-
-  if (gameState === "awards" && currentAward && awardWinners) {
-    const winner = getAwardWinner(currentAward)
-
-    const awardStyles = {
-      surprising: {
-        bg: "bg-gradient-to-br from-yellow-400 to-orange-500",
-        accent: "border-yellow-300",
-        title: "Most Surprising!",
-        emoji: "🤯",
-      },
-      funny: {
-        bg: "bg-gradient-to-br from-red-500 to-pink-600",
-        accent: "border-red-300",
-        title: "Most Funny!",
-        emoji: "😂",
-      },
-      delightful: {
-        bg: "bg-gradient-to-br from-pink-400 to-purple-500",
-        accent: "border-pink-300",
-        title: "Most Delightful!",
-        emoji: "🥰",
-      },
-    }
-
-    const style = awardStyles[currentAward]
-
-    return (
-      <div
-        className={`min-h-screen ${style.bg} p-4 flex flex-col items-center justify-center relative overflow-hidden`}
-      >
-        {floatingEmojis.map((emoji) => (
-          <div
-            key={emoji.id}
-            className="absolute pointer-events-none text-4xl"
-            style={{
-              left: emoji.x,
-              top: emoji.y,
-              transform: `rotate(${emoji.rotation}deg) scale(${emoji.scale})`,
-              opacity: 0.8,
-            }}
-          >
-            {emoji.emoji}
-          </div>
-        ))}
-
-        {fireworks.map((firework) =>
-          firework.particles.map((particle, index) => (
-            <div
-              key={`${firework.id}-${index}`}
-              className="absolute w-2 h-2 rounded-full pointer-events-none"
-              style={{
-                left: firework.x + particle.x,
-                top: firework.y + particle.y,
-                backgroundColor: particle.color,
-                opacity: particle.life,
-              }}
-            />
-          )),
-        )}
-
-        <div className="text-center space-y-6 max-w-sm relative z-50">
-          <div className="text-8xl animate-bounce">{style.emoji}</div>
-
-          <h2 className="text-3xl font-extrabold text-white drop-shadow-lg">{style.title}</h2>
-
-          <Card className={`${winner.card.color} border-4 ${style.accent} shadow-2xl transform scale-105`}>
-            <CardContent className="p-6 text-center">
-              <div className="text-4xl mb-3">{winner.card.icon}</div>
-              <div className="font-semibold text-lg mb-2">{winner.card.category}</div>
-              <p className="font-medium text-gray-900">{winner.card.challenge}</p>
-              <div className="mt-4 text-2xl">{rankingEmojis[currentAward][winner.rankings[currentAward] - 1]}</div>
-            </CardContent>
-          </Card>
-
-          <Button
-            onClick={nextAward}
-            className="bg-white text-black font-semibold text-xl px-8 py-4 rounded-full shadow-lg transform hover:scale-105 transition-all"
-          >
-            {currentAward === "delightful" ? "Final results!" : "Next award!"}
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
-  if (gameState === "finalRecap" && awardWinners) {
-    return (
-      <div className="min-h-screen bg-[#F7F2E8] p-4">
-        <div className="max-w-md mx-auto text-center space-y-6 pt-8">
-          <h1 className="text-3xl font-bold text-black">Hall of Fame</h1>
-          <p className="text-gray-600">Your legendary moments</p>
-
-          <div className="space-y-4">
-            <Card className="bg-gradient-to-r from-yellow-200 to-yellow-300 border-2 border-yellow-400">
-              <CardContent className="p-4">
-                <div className="text-2xl mb-2 font-semibold">🤯 Most Surprising</div>
-                <div className="font-medium text-sm">{awardWinners.surprising.card.challenge}</div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-r from-red-200 to-red-300 border-2 border-red-400">
-              <CardContent className="p-4">
-                <div className="text-2xl mb-2 font-semibold">😂 Most Funny</div>
-                <div className="font-medium text-sm">{awardWinners.funny.card.challenge}</div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-r from-pink-200 to-pink-300 border-2 border-pink-400">
-              <CardContent className="p-4">
-                <div className="text-2xl mb-2 font-semibold">🥰 Most Delightful</div>
-                <div className="font-medium text-sm">{awardWinners.delightful.card.challenge}</div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="pt-6">
-            <Button
-              onClick={() => setGameState("menu")}
-              className="w-full bg-black hover:bg-gray-800 text-white font-medium text-lg py-4 rounded-full"
+              onClick={startNewGame}
+              className="bg-black hover:bg-gray-800 text-white font-medium text-xl px-10 py-5 rounded-full animate-fade-in"
             >
               Play Again?
             </Button>
           </div>
-        </div>
+        )}
       </div>
     )
   }
