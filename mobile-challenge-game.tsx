@@ -3,9 +3,11 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { BarChart3, HelpCircle } from "lucide-react"
+import { BarChart3, HelpCircle, Loader2 } from "lucide-react"
 import GooglyEyesAnimation from "@/components/googly-eyes-animation"
 import CountdownTimer from "@/components/countdown-timer"
+import { supabase } from "@/lib/supabase"
+import type { ChallengeCard } from "@/types"
 
 // Simple video caching for PWA compatibility
 const videoCache = new Map<string, string>()
@@ -27,580 +29,10 @@ const cacheVideo = async (url: string): Promise<string> => {
   }
 }
 
-const challengeCards = [
-  // Face Off Cards
-  {
-    category: "Face Off",
-    challenge:
-      "Go around the circle, each person naming a different type of: Food That Is Red. The last person standing wins!",
-    color: "bg-gradient-to-br from-orange-100 to-red-200 border-orange-400",
-    icon: "⚔️",
-  },
-  {
-    category: "Face Off",
-    challenge: "Go around the circle, each person naming a different type of: Cheese. The last person standing wins!",
-    color: "bg-gradient-to-br from-orange-100 to-red-200 border-orange-400",
-    icon: "⚔️",
-  },
-  {
-    category: "Face Off",
-    challenge:
-      "Go around the circle, each person naming something that: Flies but isn't a bird. The last person standing wins!",
-    color: "bg-gradient-to-br from-orange-100 to-red-200 border-orange-400",
-    icon: "⚔️",
-  },
-  {
-    category: "Face Off",
-    challenge:
-      "Go around the circle, each person naming a different: Color that isn't primary. The last person standing wins!",
-    color: "bg-gradient-to-br from-orange-100 to-red-200 border-orange-400",
-    icon: "⚔️",
-  },
-  {
-    category: "Face Off",
-    challenge:
-      "Go around the circle, each person naming a different: Animal that lives in the desert. The last person standing wins!",
-    color: "bg-gradient-to-br from-orange-100 to-red-200 border-orange-400",
-    icon: "⚔️",
-  },
-  {
-    category: "Face Off",
-    challenge:
-      "Go around the circle, each person naming a different type of: Breakfast food. The last person standing wins!",
-    color: "bg-gradient-to-br from-orange-100 to-red-200 border-orange-400",
-    icon: "⚔️",
-  },
-
-  // Think Fast Cards
-  {
-    category: "Think Fast",
-    challenge: "Say the alphabet backwards in under 30 seconds.",
-    color: "bg-gradient-to-br from-amber-100 to-yellow-200 border-amber-400",
-    icon: "⚡",
-    timer: 30,
-  },
-  {
-    category: "Think Fast",
-    challenge: "Name 3 superheroes in 10 seconds.",
-    color: "bg-gradient-to-br from-amber-100 to-yellow-200 border-amber-400",
-    icon: "⚡",
-    timer: 10,
-  },
-  {
-    category: "Think Fast",
-    challenge: "Name 3 things that are squishy.",
-    color: "bg-gradient-to-br from-amber-100 to-yellow-200 border-amber-400",
-    icon: "⚡",
-  },
-  {
-    category: "Think Fast",
-    challenge: "Quickly name 4 things you can see right now that are blue.",
-    color: "bg-gradient-to-br from-amber-100 to-yellow-200 border-amber-400",
-    icon: "⚡",
-  },
-  {
-    category: "Think Fast",
-    challenge: "If you could have any animal as a pet, what would it be and why?",
-    color: "bg-gradient-to-br from-amber-100 to-yellow-200 border-amber-400",
-    icon: "⚡",
-  },
-  {
-    category: "Think Fast",
-    challenge: "Name one thing you are grateful for.",
-    color: "bg-gradient-to-br from-amber-100 to-yellow-200 border-amber-400",
-    icon: "⚡",
-  },
-  {
-    category: "Think Fast",
-    challenge: "Say something you love about the person sitting across from you.",
-    color: "bg-gradient-to-br from-amber-100 to-yellow-200 border-amber-400",
-    icon: "⚡",
-  },
-
-  // Teamwork Cards
-  {
-    category: "Teamwork",
-    challenge: "Everyone points to the same person at the same time without talking.",
-    color: "bg-gradient-to-br from-blue-100 to-cyan-200 border-blue-400",
-    icon: "🤝",
-  },
-  {
-    category: "Teamwork",
-    challenge: "Point to things in the room that start with the same letter until the group guesses your letter",
-    color: "bg-gradient-to-br from-blue-100 to-cyan-200 border-blue-400",
-    icon: "🤝",
-  },
-  {
-    category: "Teamwork",
-    challenge: "Create a secret handshake with the person next to you.",
-    color: "bg-gradient-to-br from-blue-100 to-cyan-200 border-blue-400",
-    icon: "🤝",
-  },
-  {
-    category: "Teamwork",
-    challenge: "Make up a two-person animal with sounds and movement.",
-    color: "bg-gradient-to-br from-blue-100 to-cyan-200 border-blue-400",
-    icon: "🤝",
-  },
-  {
-    category: "Teamwork",
-    challenge: "Make up a 10-second dance with a partner.",
-    color: "bg-gradient-to-br from-blue-100 to-cyan-200 border-blue-400",
-    icon: "🤝",
-  },
-  {
-    category: "Teamwork",
-    challenge: "Build a human pyramid with two other players.",
-    color: "bg-gradient-to-br from-blue-100 to-cyan-200 border-blue-400",
-    icon: "🤝",
-  },
-  {
-    category: "Teamwork",
-    challenge: "Invent a handshake with the person to your left",
-    color: "bg-gradient-to-br from-blue-100 to-cyan-200 border-blue-400",
-    icon: "🤝",
-  },
-  {
-    category: "Teamwork",
-    challenge: "Try to clap in sync 10 times with a partner.",
-    color: "bg-gradient-to-br from-blue-100 to-cyan-200 border-blue-400",
-    icon: "🤝",
-  },
-  {
-    category: "Teamwork",
-    challenge: "Give a high-five to everyone at the table without using your hands (use elbows or feet!).",
-    color: "bg-gradient-to-br from-blue-100 to-cyan-200 border-blue-400",
-    icon: "🤝",
-  },
-  {
-    category: "Teamwork",
-    challenge: "Pick a partner and try to stare into each other's eyes for 30 seconds without blinking or laughing.",
-    color: "bg-gradient-to-br from-blue-100 to-cyan-200 border-blue-400",
-    icon: "🤝",
-  },
-  {
-    category: "Teamwork",
-    challenge: "Create a short skit with two others.",
-    color: "bg-gradient-to-br from-blue-100 to-cyan-200 border-blue-400",
-    icon: "🤝",
-    hint: "Think about everyday situations! A tiny argument over the last slice of pizza? Two explorers discovering something weird? A pet trying to convince its human to give it treats? Keep it simple!",
-  },
-
-  // Finders Sharers Cards
-  {
-    category: "Finders Sharers",
-    challenge: "Find something that smells interesting",
-    color: "bg-gradient-to-br from-emerald-100 to-teal-200 border-emerald-400",
-    icon: "🔍",
-  },
-  {
-    category: "Finders Sharers",
-    challenge: "Find something in the room that is rough and show it to everyone.",
-    color: "bg-gradient-to-br from-emerald-100 to-teal-200 border-emerald-400",
-    icon: "🔍",
-  },
-  {
-    category: "Finders Sharers",
-    challenge: "Find something that is smaller than your thumb and show it off.",
-    color: "bg-gradient-to-br from-emerald-100 to-teal-200 border-emerald-400",
-    icon: "🔍",
-  },
-  {
-    category: "Finders Sharers",
-    challenge: "Find an object that is made of wood and tap it three times.",
-    color: "bg-gradient-to-br from-emerald-100 to-teal-200 border-emerald-400",
-    icon: "🔍",
-  },
-  {
-    category: "Finders Sharers",
-    challenge: "Find something that is soft and give it a gentle pat.",
-    color: "bg-gradient-to-br from-emerald-100 to-teal-200 border-emerald-400",
-    icon: "🔍",
-  },
-  {
-    category: "Finders Sharers",
-    challenge: "Find something with at least three different colors on it.",
-    color: "bg-gradient-to-br from-emerald-100 to-teal-200 border-emerald-400",
-    icon: "🔍",
-  },
-  {
-    category: "Finders Sharers",
-    challenge: "Find the loudest object near you and make a sound with it",
-    color: "bg-gradient-to-br from-emerald-100 to-teal-200 border-emerald-400",
-    icon: "🔍",
-  },
-
-  // Just Do It Cards
-  {
-    category: "Just Do It",
-    challenge: "Turn off the lights",
-    color: "bg-gradient-to-br from-indigo-100 to-purple-200 border-indigo-400",
-    icon: "✨",
-  },
-  {
-    category: "Just Do It",
-    challenge: "High-five everyone at the table without saying a word. Eyes closed.",
-    color: "bg-gradient-to-br from-indigo-100 to-purple-200 border-indigo-400",
-    icon: "✨",
-  },
-  {
-    category: "Just Do It",
-    challenge: "Pretend you're royalty and wave to your adoring subjects.",
-    color: "bg-gradient-to-br from-indigo-100 to-purple-200 border-indigo-400",
-    icon: "✨",
-  },
-
-  // Move It Cards
-  {
-    category: "Move It",
-    challenge: "Hop across the room with an object on your head.",
-    color: "bg-gradient-to-br from-green-100 to-lime-200 border-green-400",
-    icon: "🏃",
-  },
-  {
-    category: "Move It",
-    challenge: "Waddle like a penguin across the room.",
-    color: "bg-gradient-to-br from-green-100 to-lime-200 border-green-400",
-    icon: "🏃",
-  },
-  {
-    category: "Move It",
-    challenge: "Do 5 somersaults in a row",
-    color: "bg-gradient-to-br from-green-100 to-lime-200 border-green-400",
-    icon: "🏃",
-  },
-  {
-    category: "Move It",
-    challenge: "Skip backwards from one end of the room to the other.",
-    color: "bg-gradient-to-br from-green-100 to-lime-200 border-green-400",
-    icon: "🏃",
-  },
-  {
-    category: "Move It",
-    challenge: "Crab walk from one side of the room to the other.",
-    color: "bg-gradient-to-br from-green-100 to-lime-200 border-green-400",
-    icon: "🏃",
-  },
-  {
-    category: "Move It",
-    challenge: "Crawl like a baby and bark like a dog.",
-    color: "bg-gradient-to-br from-green-100 to-lime-200 border-green-400",
-    icon: "🏃",
-  },
-  {
-    category: "Move It",
-    challenge: "Spin around five times and try to walk in a straight line.",
-    color: "bg-gradient-to-br from-green-100 to-lime-200 border-green-400",
-    icon: "🏃",
-  },
-  {
-    category: "Move It",
-    challenge: "Do 10 jumping jacks while singing the alphabet.",
-    color: "bg-gradient-to-br from-green-100 to-lime-200 border-green-400",
-    icon: "🏃",
-  },
-  {
-    category: "Move It",
-    challenge: "Balance a spoon on your head for 10 seconds.",
-    color: "bg-gradient-to-br from-green-100 to-lime-200 border-green-400",
-    icon: "🏃",
-  },
-  {
-    category: "Move It",
-    challenge: "Stand on one leg and count to 20.",
-    color: "bg-gradient-to-br from-green-100 to-lime-200 border-green-400",
-    icon: "🏃",
-  },
-  {
-    category: "Move It",
-    challenge: "Walk across the room like you're walking on hot coals.",
-    color: "bg-gradient-to-br from-green-100 to-lime-200 border-green-400",
-    icon: "🏃",
-  },
-  {
-    category: "Move It",
-    challenge: "Pretend to be a silent ninja trying to steal the last cookie.",
-    color: "bg-gradient-to-br from-green-100 to-lime-200 border-green-400",
-    icon: "🏃",
-  },
-  {
-    category: "Move It",
-    challenge: "Do a dramatic, slow-motion fall onto a couch or pillow.",
-    color: "bg-gradient-to-br from-green-100 to-lime-200 border-green-400",
-    icon: "🏃",
-  },
-  {
-    category: "Move It",
-    challenge: "Walk on your tiptoes for one full minute without making a sound.",
-    color: "bg-gradient-to-br from-green-100 to-lime-200 border-green-400",
-    icon: "🏃",
-  },
-  {
-    category: "Move It",
-    challenge: "See who can stay frozen like a statue the longest. First one to twitch loses!",
-    color: "bg-gradient-to-br from-green-100 to-lime-200 border-green-400",
-    icon: "🏃",
-  },
-
-  // Say/Sing Cards
-  {
-    category: "Say/Sing",
-    challenge: "Tell a joke in a pirate voice.",
-    color: "bg-gradient-to-br from-purple-100 to-violet-200 border-purple-400",
-    icon: "🎤",
-    hint: "What's a pirate's favorite letter? Arrrrrrr! Now say it with an eyepatch and a parrot on your shoulder (imaginary ones work!).",
-  },
-  {
-    category: "Say/Sing",
-    challenge: "Say a tongue twister three times fast.",
-    color: "bg-gradient-to-br from-purple-100 to-violet-200 border-purple-400",
-    icon: "🎤",
-    hint: "Peter Piper picked a peck of pickled peppers. Or She sells seashells by the seashore. Speed it up!",
-  },
-  {
-    category: "Say/Sing",
-    challenge: "Say your name backward three times.",
-    color: "bg-gradient-to-br from-purple-100 to-violet-200 border-purple-400",
-    icon: "🎤",
-  },
-  {
-    category: "Say/Sing",
-    challenge: "Say a silly sentence with as many 's' words as you can.",
-    color: "bg-gradient-to-br from-purple-100 to-violet-200 border-purple-400",
-    icon: "🎤",
-  },
-  {
-    category: "Say/Sing",
-    challenge: "Sing the ABCs like a robot.",
-    color: "bg-gradient-to-br from-purple-100 to-violet-200 border-purple-400",
-    icon: "🎤",
-  },
-  {
-    category: "Say/Sing",
-    challenge: "Sing a song using only animal sounds.",
-    color: "bg-gradient-to-br from-purple-100 to-violet-200 border-purple-400",
-    icon: "🎤",
-  },
-  {
-    category: "Say/Sing",
-    challenge: "Sing 'Happy Birthday' to the tune of Twinkle Twinkle",
-    color: "bg-gradient-to-br from-purple-100 to-violet-200 border-purple-400",
-    icon: "🎤",
-  },
-  {
-    category: "Say/Sing",
-    challenge: "Say something nice about the person to your left using a fancy, important-sounding voice.",
-    color: "bg-gradient-to-br from-purple-100 to-violet-200 border-purple-400",
-    icon: "🎤",
-  },
-  {
-    category: "Say/Sing",
-    challenge: "Make a sound like a happy cow, then an angry cat, then a surprised chicken.",
-    color: "bg-gradient-to-br from-purple-100 to-violet-200 border-purple-400",
-    icon: "🎤",
-  },
-  {
-    category: "Say/Sing",
-    challenge: 'Sing any song, but replace all the words with only the sound "meow."',
-    color: "bg-gradient-to-br from-purple-100 to-violet-200 border-purple-400",
-    icon: "🎤",
-  },
-
-  // Act It Out Cards
-  {
-    category: "Act It Out",
-    challenge: "Act like a balloon slowly deflating.",
-    color: "bg-gradient-to-br from-red-100 to-pink-200 border-red-400",
-    icon: "🎭",
-  },
-  {
-    category: "Act It Out",
-    challenge: "Act like a giant waking up from a nap.",
-    color: "bg-gradient-to-br from-red-100 to-pink-200 border-red-400",
-    icon: "🎭",
-  },
-  {
-    category: "Act It Out",
-    challenge: "Pretend you're being chased by bees.",
-    color: "bg-gradient-to-br from-red-100 to-pink-200 border-red-400",
-    icon: "🎭",
-  },
-  {
-    category: "Act It Out",
-    challenge: "Pretend you're sneaking through a haunted house.",
-    color: "bg-gradient-to-br from-red-100 to-pink-200 border-red-400",
-    icon: "🎭",
-  },
-  {
-    category: "Act It Out",
-    challenge: "Pretend you're eating something delicious.",
-    color: "bg-gradient-to-br from-red-100 to-pink-200 border-red-400",
-    icon: "🎭",
-  },
-  {
-    category: "Act It Out",
-    challenge: "Act like you're walking on the moon.",
-    color: "bg-gradient-to-br from-red-100 to-pink-200 border-red-400",
-    icon: "🎭",
-  },
-  {
-    category: "Act It Out",
-    challenge: "Act like you're stuck in jelly.",
-    color: "bg-gradient-to-br from-red-100 to-pink-200 border-red-400",
-    icon: "🎭",
-  },
-  {
-    category: "Act It Out",
-    challenge: "Pretend you're a sloth trying to eat dinner",
-    color: "bg-gradient-to-br from-red-100 to-pink-200 border-red-400",
-    icon: "🎭",
-  },
-  {
-    category: "Act It Out",
-    challenge: "Act like you're a cat stuck in a cardboard box.",
-    color: "bg-gradient-to-br from-red-100 to-pink-200 border-red-400",
-    icon: "🎭",
-  },
-  {
-    category: "Act It Out",
-    challenge: "Act like you're a ninja trying to be sneaky but keep tripping.",
-    color: "bg-gradient-to-br from-red-100 to-pink-200 border-red-400",
-    icon: "🎭",
-  },
-  {
-    category: "Act It Out",
-    challenge: "Pretend you're a penguin trying to fly.",
-    color: "bg-gradient-to-br from-red-100 to-pink-200 border-red-400",
-    icon: "🎭",
-  },
-  {
-    category: "Act It Out",
-    challenge: "Act like you're a zombie doing yoga.",
-    color: "bg-gradient-to-br from-red-100 to-pink-200 border-red-400",
-    icon: "🎭",
-  },
-  {
-    category: "Act It Out",
-    challenge: "Act like you're a robot that's running out of battery.",
-    color: "bg-gradient-to-br from-red-100 to-pink-200 border-red-400",
-    icon: "🎭",
-  },
-  {
-    category: "Act It Out",
-    challenge: "Pretend you're a piece of toast popping out of a toaster.",
-    color: "bg-gradient-to-br from-red-100 to-pink-200 border-red-400",
-    icon: "🎭",
-  },
-  {
-    category: "Act It Out",
-    challenge: "Mime being stuck in quicksand.",
-    color: "bg-gradient-to-br from-red-100 to-pink-200 border-red-400",
-    icon: "🎭",
-  },
-  {
-    category: "Act It Out",
-    challenge: "Act like you're trying to walk against a super strong wind.",
-    color: "bg-gradient-to-br from-red-100 to-pink-200 border-red-400",
-    icon: "🎭",
-  },
-  {
-    category: "Act It Out",
-    challenge: "Mime brushing your teeth with a giant, invisible toothbrush.",
-    color: "bg-gradient-to-br from-red-100 to-pink-200 border-red-400",
-    icon: "🎭",
-  },
-  {
-    category: "Act It Out",
-    challenge: "Act out trying to open a jar that just won't budge.",
-    color: "bg-gradient-to-br from-red-100 to-pink-200 border-red-400",
-    icon: "🎭",
-  },
-
-  // Funny Face Cards
-  {
-    category: "Funny Face",
-    challenge: "Pretend to sneeze 5 different ways.",
-    color: "bg-gradient-to-br from-yellow-100 to-orange-200 border-yellow-400",
-    icon: "😜",
-  },
-  {
-    category: "Funny Face",
-    challenge: "Try to cross your eyes and wiggle your ears",
-    color: "bg-gradient-to-br from-yellow-100 to-orange-200 border-yellow-400",
-    icon: "😜",
-  },
-  {
-    category: "Funny Face",
-    challenge: "Try to make someone laugh with just your eyes.",
-    color: "bg-gradient-to-br from-yellow-100 to-orange-200 border-yellow-400",
-    icon: "😜",
-  },
-  {
-    category: "Funny Face",
-    challenge: "Pretend you're chewing the world's stickiest gum.",
-    color: "bg-gradient-to-br from-yellow-100 to-orange-200 border-yellow-400",
-    icon: "😜",
-  },
-  {
-    category: "Funny Face",
-    challenge: "Hold your tongue and say 'I am a hungry hippo.'",
-    color: "bg-gradient-to-br from-yellow-100 to-orange-200 border-yellow-400",
-    icon: "😜",
-  },
-  {
-    category: "Funny Face",
-    challenge: "Make the silliest face you can, then everyone else tries to copy you",
-    color: "bg-gradient-to-br from-yellow-100 to-orange-200 border-yellow-400",
-    icon: "😜",
-  },
-  {
-    category: "Funny Face",
-    challenge: "Puff up your cheeks and hold it for 10 seconds.",
-    color: "bg-gradient-to-br from-yellow-100 to-orange-200 border-yellow-400",
-    icon: "😜",
-  },
-  {
-    category: "Funny Face",
-    challenge: "Do your best villain laugh.",
-    color: "bg-gradient-to-br from-yellow-100 to-orange-200 border-yellow-400",
-    icon: "😜",
-  },
-  {
-    category: "Funny Face",
-    challenge: "Make your best fish face.",
-    color: "bg-gradient-to-br from-yellow-100 to-orange-200 border-yellow-400",
-    icon: "😜",
-  },
-  {
-    category: "Funny Face",
-    challenge: "Stick your tongue out and try to hum a tune.",
-    color: "bg-gradient-to-br from-yellow-100 to-orange-200 border-yellow-400",
-    icon: "😜",
-  },
-  {
-    category: "Funny Face",
-    challenge: "Make a face like you just tasted a super sour lemon.",
-    color: "bg-gradient-to-br from-yellow-100 to-orange-200 border-yellow-400",
-    icon: "😜",
-  },
-  {
-    category: "Funny Face",
-    challenge: "Try to wiggle one eyebrow without moving the other.",
-    color: "bg-gradient-to-br from-yellow-100 to-orange-200 border-yellow-400",
-    icon: "😜",
-  },
-  {
-    category: "Funny Face",
-    challenge: "Make a face that shows you've just heard the most incredible secret ever.",
-    color: "bg-gradient-to-br from-yellow-100 to-orange-200 border-yellow-400",
-    icon: "😜",
-  },
-]
-
 type GameState = "menu" | "playing" | "ranking" | "finalRecap" | "stats"
 
 interface TurnResult {
-  card: (typeof challengeCards)[0] & { timer?: number }
+  card: ChallengeCard
   score: number
   emoji: string
 }
@@ -675,10 +107,12 @@ const curators = [
 
 export default function Component() {
   const [gameState, setGameState] = useState<GameState>("menu")
+  const [allCards, setAllCards] = useState<ChallengeCard[]>([])
+  const [isLoadingCards, setIsLoadingCards] = useState(true)
   const [currentTurn, setCurrentTurn] = useState(1)
-  const [shuffledCards, setShuffledCards] = useState<(typeof challengeCards)[]>([])
-  const [currentCards, setCurrentCards] = useState<(typeof challengeCards)[]>([])
-  const [selectedCard, setSelectedCard] = useState<((typeof challengeCards)[0] & { timer?: number }) | null>(null)
+  const [shuffledCards, setShuffledCards] = useState<ChallengeCard[]>([])
+  const [currentCards, setCurrentCards] = useState<ChallengeCard[]>([])
+  const [selectedCard, setSelectedCard] = useState<ChallengeCard | null>(null)
   const [turnResults, setTurnResults] = useState<TurnResult[]>([])
   const [isShuffling, setIsShuffling] = useState(false)
   const [selectedRating, setSelectedRating] = useState<Rating | null>(null)
@@ -698,13 +132,25 @@ export default function Component() {
   const [countdownComplete, setCountdownComplete] = useState(false)
 
   useEffect(() => {
+    const fetchCards = async () => {
+      setIsLoadingCards(true)
+      const { data, error } = await supabase.from("challenge_cards").select("*")
+      if (error) {
+        console.error("Error fetching cards:", error)
+        // Handle error appropriately in a real app
+      } else {
+        setAllCards(data)
+      }
+      setIsLoadingCards(false)
+    }
+
+    fetchCards()
+
     const savedStats = localStorage.getItem("googly-game-stats")
     if (savedStats) {
       setStats(JSON.parse(savedStats))
     }
-  }, [])
 
-  useEffect(() => {
     const cacheShuffleVideo = async () => {
       try {
         const cachedUrl = await cacheVideo("/shuffle.mp4")
@@ -754,7 +200,8 @@ export default function Component() {
   }
 
   const startNewGame = () => {
-    const shuffled = fisherYatesShuffle(challengeCards)
+    if (isLoadingCards || allCards.length === 0) return
+    const shuffled = fisherYatesShuffle(allCards)
     setShuffledCards(shuffled)
     setCurrentTurn(1)
     setTurnResults([])
@@ -768,7 +215,7 @@ export default function Component() {
     dealCards(shuffled, 1)
   }
 
-  const dealCards = (deck: (typeof challengeCards)[], turn: number) => {
+  const dealCards = (deck: ChallengeCard[], turn: number) => {
     setIsShuffling(true)
     setTimeout(() => {
       const cards = deck.slice((turn - 1) * 2, turn * 2)
@@ -777,7 +224,7 @@ export default function Component() {
     }, 5000)
   }
 
-  const selectCard = (card: (typeof challengeCards)[0] & { timer?: number }) => {
+  const selectCard = (card: ChallengeCard) => {
     setSelectedCard(card)
     setShowHint(false)
     setCountdownComplete(false)
@@ -880,9 +327,10 @@ export default function Component() {
                   <div className="absolute inset-0 bg-white rounded-full opacity-30 animate-pulse blur-md"></div>
                   <Button
                     onClick={startNewGame}
-                    className="relative w-full bg-black hover:bg-gray-800 text-white font-medium text-xl py-6 rounded-full"
+                    disabled={isLoadingCards}
+                    className="relative w-full bg-black hover:bg-gray-800 text-white font-medium text-xl py-6 rounded-full disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
-                    Play
+                    {isLoadingCards ? <Loader2 className="w-6 h-6 animate-spin" /> : "Play"}
                   </Button>
                 </div>
                 <Button
@@ -994,11 +442,13 @@ export default function Component() {
             </div>
           ) : (
             <div className="space-y-6 mb-6">
-              {currentCards.map((card, index) => (
+              {currentCards.map((card) => (
                 <Card
-                  key={index}
+                  key={card.id}
                   className={`${card.color} border-2 cursor-pointer transform transition-all duration-300 min-h-[200px] flex flex-col justify-center ${
-                    selectedCard === card ? "scale-105 ring-4 ring-black shadow-2xl" : "hover:scale-102 shadow-lg"
+                    selectedCard?.id === card.id
+                      ? "scale-105 ring-4 ring-black shadow-2xl"
+                      : "hover:scale-102 shadow-lg"
                   }`}
                   onClick={() => selectCard(card)}
                 >
@@ -1014,7 +464,7 @@ export default function Component() {
                         </span>
                       </div>
                       <p className="text-lg font-medium text-gray-900 leading-tight">{card.challenge}</p>
-                      {selectedCard === card && card.hint && (
+                      {selectedCard?.id === card.id && card.hint && (
                         <>
                           {!showHint && (
                             <Button
@@ -1131,7 +581,7 @@ export default function Component() {
         <div className="relative w-full h-[400px]">
           {revealedCards.map((result, index) => (
             <div
-              key={result.card.challenge}
+              key={result.card.id}
               className="absolute w-full transition-all duration-500 ease-out"
               style={{
                 top: "50%",
