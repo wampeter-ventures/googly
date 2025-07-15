@@ -2,7 +2,8 @@
 
 import { generateText } from "ai"
 import { groq } from "@ai-sdk/groq"
-import { supabaseAdmin, supabase } from "@/lib/supabase-admin"
+import { supabaseAdmin } from "@/lib/supabase-admin"
+import { supabase } from "@/lib/supabase"
 import type { ChallengeCard } from "@/types"
 
 const CATEGORIES = [
