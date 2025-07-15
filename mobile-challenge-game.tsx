@@ -153,11 +153,11 @@ export default function Component() {
 
     const cacheShuffleVideo = async () => {
       try {
-        const cachedUrl = await cacheVideo("/shuffle.mp4")
+        const cachedUrl = await cacheVideo("https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/PtFwYmR5hoJf8M2xfiiVq3/public/shuffle.mp4")
         setCachedShuffleUrl(cachedUrl)
       } catch (error) {
         console.warn("Failed to cache shuffle video:", error)
-        setCachedShuffleUrl("/shuffle.mp4")
+        setCachedShuffleUrl("https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/PtFwYmR5hoJf8M2xfiiVq3/public/shuffle.mp4")
       }
     }
     cacheShuffleVideo()
@@ -237,12 +237,12 @@ export default function Component() {
     }
   }
 
-  const submitRankings = () => {
-    if (selectedCard && selectedRating) {
+  const handleEmojiSelection = (rating: Rating) => {
+    if (selectedCard) {
       const newResult: TurnResult = {
         card: selectedCard,
-        score: selectedRating.score,
-        emoji: selectedRating.emoji,
+        score: rating.score,
+        emoji: rating.emoji,
       }
       const newResults = [...turnResults, newResult]
       setTurnResults(newResults)
@@ -279,7 +279,7 @@ export default function Component() {
     <div className="flex flex-col items-center justify-center h-64 space-y-4">
       <div className="w-[80vw] max-w-md h-auto flex items-center justify-center">
         <video autoPlay loop muted playsInline className="w-full h-auto object-contain" poster="/shuffle-fallback.png">
-          <source src={cachedShuffleUrl || "/shuffle.mp4"} type="video/mp4" />
+          <source src={cachedShuffleUrl || "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/PtFwYmR5hoJf8M2xfiiVq3/public/shuffle.mp4"} type="video/mp4" />
         </video>
       </div>
       <div className="text-2xl font-bold text-gray-800 animate-bounce">🎴 Shuffling cards!</div>
@@ -313,7 +313,7 @@ export default function Component() {
                     poster="/googly-game-logo.png"
                     onError={() => setVideoError(true)}
                   >
-                    <source src="/googly-logo.mp4" type="video/mp4" />
+                    <source src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/wwhug1CKP-YHcUmyv6n6fk/public/googly-logo.mp4" type="video/mp4" />
                   </video>
                 )}
               </div>
@@ -343,7 +343,7 @@ export default function Component() {
               <div className="text-base text-gray-500 space-y-2 pt-4">
                 <div>June 26, 2025</div>
                 <div>No. 1468</div>
-                <div>Curated by {currentCurator}</div>
+                {/* <div>Curated by {currentCurator}</div> */}
                 <div>
                   <button
                     onClick={() => alert("Coming soon! Create your own custom deck of challenges.")}
@@ -499,7 +499,7 @@ export default function Component() {
                 onClick={() => setIsCountingDown(true)}
                 className="w-full bg-green-600 hover:bg-green-700 text-white font-medium text-lg py-3 rounded-full"
               >
-                Start!
+                {selectedCard?.timer ? "Start Timer" : "Start!"}
               </Button>
             )}
             {showNextTurnButton && (
@@ -531,43 +531,12 @@ export default function Component() {
           {ratingsForDisplay.map((rating) => (
             <button
               key={rating.emoji}
-              onClick={() => setSelectedRating(rating)}
-              className={`relative aspect-square flex items-center justify-center rounded-2xl transition-all duration-200 transform ${
-                selectedRating?.emoji === rating.emoji
-                  ? "bg-white/80 scale-110 shadow-2xl ring-4 ring-yellow-400"
-                  : "bg-white/40 hover:scale-105 hover:shadow-lg"
-              }`}
+              onClick={() => handleEmojiSelection(rating)}
+              className="relative aspect-square flex items-center justify-center rounded-2xl transition-all duration-200 transform bg-white/40 hover:scale-105 hover:shadow-lg active:scale-95"
             >
               <span className="text-4xl md:text-5xl">{rating.emoji}</span>
-              {selectedRating?.emoji === rating.emoji && (
-                <div className="absolute inset-0 pointer-events-none">
-                  {[...Array(8)].map((_, i) => (
-                    <span
-                      key={i}
-                      className="absolute text-yellow-400 text-2xl animate-ping"
-                      style={{
-                        top: `${50 + 40 * Math.sin((i / 8) * 2 * Math.PI)}%`,
-                        left: `${50 + 40 * Math.cos((i / 8) * 2 * Math.PI)}%`,
-                        animationDelay: `${i * 0.1}s`,
-                      }}
-                    >
-                      ✨
-                    </span>
-                  ))}
-                </div>
-              )}
             </button>
           ))}
-        </div>
-        <div className="mt-auto py-4">
-          {selectedRating && (
-            <Button
-              onClick={submitRankings}
-              className="w-full bg-black hover:bg-gray-800 text-white font-medium text-lg py-4 rounded-full animate-fade-in"
-            >
-              {currentTurn >= 8 ? "See Results" : "Next Turn"}
-            </Button>
-          )}
         </div>
       </div>
     )

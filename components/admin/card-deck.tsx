@@ -1,115 +1,144 @@
 "use client"
 
-import { useState, useTransition, useEffect } from "react"
-import { AnimatePresence, motion } from "framer-motion"
-import { approveCardAction, categoryMap, generateCardsAction } from "@/app/admin/actions"
-import type { CardSuggestion } from "@/types"
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Loader2, Sparkles } from "lucide-react"
 import SuggestionCard from "./suggestion-card"
-import { useToast } from "@/hooks/use-toast"
-import { Loader2 } from "lucide-react"
+import { generateCardsAction, saveCardAction, editCardAction } from "@/app/admin/actions"
+import type { ChallengeCard } from "@/types"
 
-export default function CardDeck({
-  initialCards,
-  customPrompt,
-  onSave,
-}: {
-  initialCards: CardSuggestion[]
-  customPrompt: string
-  onSave: () => void
-}) {
-  const [cards, setCards] = useState(initialCards)
-  const [isFetchingMore, setIsFetchingMore] = useState(false)
-  const [isSaving, startSavingTransition] = useTransition()
-  const { toast } = useToast()
+export default function CardDeck() {
+  const [suggestions, setSuggestions] = useState<Omit<ChallengeCard, "id" | "created_at">[]>([])
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [theme, setTheme] = useState("")
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    const fetchMoreCards = async () => {
-      setIsFetchingMore(true)
-      const res = await generateCardsAction(customPrompt)
-      if (res.success && res.cards) {
-        const newCardsWithIds = res.cards.map((card) => ({
-          ...card,
-          id: crypto.randomUUID(),
-        }))
-        setCards((prev) => [...prev, ...newCardsWithIds])
-      }
-      setIsFetchingMore(false)
-    }
+  const generateCards = async () => {
+    setIsGenerating(true)
+    setError(null)
 
-    if (cards.length < 10 && !isFetchingMore) {
-      fetchMoreCards()
-    }
-  }, [cards.length, isFetchingMore, customPrompt])
-
-  const removeCard = (id: string) => {
-    setCards((prev) => prev.filter((c) => c.id !== id))
-  }
-
-  const handlePass = (id: string) => {
-    removeCard(id)
-  }
-
-  const handleKeep = (cardToKeep: CardSuggestion) => {
-    startSavingTransition(async () => {
-      const res = await approveCardAction(cardToKeep)
-      if (res.success) {
-        onSave()
-        removeCard(cardToKeep.id)
-        toast({ title: "Card saved!", className: "bg-green-100" })
+    try {
+      const result = await generateCardsAction(theme.trim() || undefined)
+      if (result.success) {
+        setSuggestions(result.cards)
       } else {
-        toast({ title: res.error, variant: "destructive" })
+        setError(result.error || "Failed to generate cards")
       }
-    })
+    } catch (err) {
+      setError("An unexpected error occurred")
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
-  const replaceCard = (id: string, newCardData: Omit<CardSuggestion, "id" | "color" | "icon">) => {
-    setCards((prev) =>
-      prev.map((c) => {
-        if (c.id === id) {
-          const { color, icon } = categoryMap[newCardData.category]
-          return { ...c, ...newCardData, color, icon }
-        }
-        return c
-      }),
-    )
+  const handleKeep = async (card: Omit<ChallengeCard, "id" | "created_at">) => {
+    setIsProcessing(true)
+    try {
+      const result = await saveCardAction(card)
+      if (result.success) {
+        setSuggestions((prev) => prev.filter((c) => c !== card))
+      } else {
+        setError(result.error || "Failed to save card")
+      }
+    } catch (err) {
+      setError("An unexpected error occurred")
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
-  const visibleCards = cards.slice(0, 2).reverse()
+  const handlePass = (card: Omit<ChallengeCard, "id" | "created_at">) => {
+    setSuggestions((prev) => prev.filter((c) => c !== card))
+  }
+
+  const handleEdit = async (card: Omit<ChallengeCard, "id" | "created_at">, instructions: string) => {
+    setIsProcessing(true)
+    try {
+      // Create a temporary card with an ID for the edit action
+      const tempCard: ChallengeCard = {
+        ...card,
+        id: 0, // Temporary ID
+        created_at: new Date().toISOString(),
+      }
+
+      const result = await editCardAction(tempCard, instructions)
+      if (result.success) {
+        // Replace the card in suggestions with the edited version
+        setSuggestions((prev) =>
+          prev.map((c) =>
+            c === card
+              ? {
+                  category: result.card.category,
+                  challenge: result.card.challenge,
+                  color: result.card.color,
+                  icon: result.card.icon,
+                  hint: result.card.hint,
+                  timer: result.card.timer,
+                }
+              : c,
+          ),
+        )
+      } else {
+        setError(result.error || "Failed to edit card")
+      }
+    } catch (err) {
+      setError("An unexpected error occurred")
+    } finally {
+      setIsProcessing(false)
+    }
+  }
 
   return (
-    <div className="relative w-full max-w-md h-96 flex items-center justify-center">
-      <AnimatePresence>
-        {visibleCards.map((card, index) => (
-          <motion.div
-            key={card.id}
-            className="absolute w-full"
-            initial={{
-              scale: 1 - (visibleCards.length - 1 - index) * 0.05,
-              y: (visibleCards.length - 1 - index) * -10,
-            }}
-            animate={{ scale: 1 - index * 0.05, y: index * -10 }}
-            exit={{ scale: 0.8, y: -40, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          >
-            <SuggestionCard
-              card={card}
-              onKeep={() => handleKeep(card)}
-              onPass={() => handlePass(card.id)}
-              replaceCard={replaceCard}
-            />
-          </motion.div>
-        ))}
-      </AnimatePresence>
-      {cards.length === 0 && !isFetchingMore && (
-        <div className="text-center text-gray-500">
-          <p className="font-bold text-lg">All done!</p>
-          <p className="text-sm">Generate a new batch to continue.</p>
+    <div className="space-y-6">
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Input
+            placeholder="Optional theme (e.g., 'holiday party', 'office team building')"
+            value={theme}
+            onChange={(e) => setTheme(e.target.value)}
+            className="w-full"
+          />
+        </div>
+        <Button
+          onClick={generateCards}
+          disabled={isGenerating}
+          className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+        >
+          {isGenerating ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Generating Cards...
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-4 h-4 mr-2" />
+              Generate New Cards
+            </>
+          )}
+        </Button>
+      </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-800 text-sm">{error}</p>
         </div>
       )}
-      {isFetchingMore && cards.length < 2 && (
-        <div className="text-center text-gray-500">
-          <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-          <p>Fetching more cards...</p>
+
+      {suggestions.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">Review Suggestions ({suggestions.length} remaining)</h3>
+          {suggestions.map((card, index) => (
+            <SuggestionCard
+              key={index}
+              card={card}
+              onKeep={handleKeep}
+              onPass={() => handlePass(card)}
+              onEdit={handleEdit}
+              isProcessing={isProcessing}
+            />
+          ))}
         </div>
       )}
     </div>

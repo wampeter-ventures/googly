@@ -2,163 +2,285 @@
 
 import { generateText } from "ai"
 import { groq } from "@ai-sdk/groq"
-import { z } from "zod"
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import type { CardSuggestion, Category } from "@/types"
+import type { ChallengeCard } from "@/types"
 
-/* ------------------------------------------------------------------ */
-/*  1. Helpers & Schemas                                              */
-/* ------------------------------------------------------------------ */
-const cardSchema = z.object({
-  category: z.enum([
-    "Face Off",
-    "Think Fast",
-    "Teamwork",
-    "Finders Sharers",
-    "Just Do It",
-    "Move It",
-    "Say/Sing",
-    "Act It Out",
-    "Funny Face",
-  ]),
-  challenge: z.string().min(8).max(220),
-  hint: z.string().nullable().optional(),
-  timer: z.number().int().min(5).max(180).nullable().optional(),
-})
+const CATEGORIES = [
+  {
+    name: "Face Off",
+    color: "bg-gradient-to-br from-orange-100 to-red-200 border-orange-400",
+    icon: "⚔️",
+    description: "Competitive challenges where players go head-to-head",
+  },
+  {
+    name: "Think Fast",
+    color: "bg-gradient-to-br from-amber-100 to-yellow-200 border-amber-400",
+    icon: "⚡",
+    description: "Quick thinking challenges, often with time pressure",
+  },
+  {
+    name: "Teamwork",
+    color: "bg-gradient-to-br from-blue-100 to-cyan-200 border-blue-400",
+    icon: "🤝",
+    description: "Collaborative challenges that require working together",
+  },
+  {
+    name: "Just Do It",
+    color: "bg-gradient-to-br from-green-100 to-emerald-200 border-green-400",
+    icon: "🎯",
+    description: "Action-oriented challenges that require doing something",
+  },
+  {
+    name: "Get Creative",
+    color: "bg-gradient-to-br from-purple-100 to-pink-200 border-purple-400",
+    icon: "🎨",
+    description: "Creative and artistic challenges",
+  },
+  {
+    name: "Be Silly",
+    color: "bg-gradient-to-br from-pink-100 to-rose-200 border-pink-400",
+    icon: "🤪",
+    description: "Fun, silly, and lighthearted challenges",
+  },
+]
 
-const cleanJson = (txt: string) =>
-  txt
-    .replace(/[“”]/g, '"')
-    .replace(/,\s*([\]}])/g, "$1")
-    .replace(/(\r\n|\n|\r)/g, " ")
-    .trim()
-
-function coerceTimer(val: unknown) {
-  if (typeof val === "number") return val
-  if (typeof val === "string") {
-    const n = Number.parseInt(val, 10)
-    return Number.isFinite(n) ? n : null
-  }
-  return null
-}
-
-function normalise(obj: any) {
-  const challenge = obj.challenge ?? obj.text ?? obj.description ?? obj.title ?? obj.prompt ?? ""
-
-  return {
-    category: obj.category,
-    challenge: typeof challenge === "string" ? challenge.trim() : "",
-    hint: obj.hint ?? null,
-    timer: coerceTimer(obj.timer),
-  }
-}
-
-/* ------------------------------------------------------------------ */
-/*  2. Category → UI mapping                                          */
-/* ------------------------------------------------------------------ */
-export const categoryMap: Record<Category, { color: string; icon: string }> = {
-  "Face Off": { color: "border-orange-400", icon: "⚔️" },
-  "Think Fast": { color: "border-amber-400", icon: "⚡" },
-  Teamwork: { color: "border-blue-400", icon: "🤝" },
-  "Finders Sharers": { color: "border-emerald-400", icon: "🔍" },
-  "Just Do It": { color: "border-indigo-400", icon: "✨" },
-  "Move It": { color: "border-green-400", icon: "🏃" },
-  "Say/Sing": { color: "border-purple-400", icon: "🎤" },
-  "Act It Out": { color: "border-red-400", icon: "🎭" },
-  "Funny Face": { color: "border-yellow-400", icon: "😜" },
-}
-
-/* ------------------------------------------------------------------ */
-/*  3. Prompts                                                        */
-/* ------------------------------------------------------------------ */
-const CORE_RULES = `
-• Family-friendly • 10-60 s turns (solo / pair / group)
-• No long planning, simple props or none
-• Fun, specific wording
-• Category must be one of: ${Object.keys(categoryMap).join(", ")}
-• IMPORTANT: Only add a 'hint' for challenges that are creative or might be difficult to start, like those in 'Say/Sing' or 'Act It Out'. Most cards should NOT have a hint.
-`
-
-const BULK_SYS = `You are a party-game designer. Return ONLY valid JSON.\n${CORE_RULES}`
-const SINGLE_SYS = `Revise ONE card. Return ONLY valid JSON.\n${CORE_RULES}`
-
-/* ------------------------------------------------------------------ */
-/*  4. Bulk generator (≈40 cards)                                     */
-/* ------------------------------------------------------------------ */
-export async function generateCardsAction(extraPrompt = "") {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const { text } = await generateText({
-        model: groq("llama3-70b-8192"),
-        system: BULK_SYS + (extraPrompt ? `\n• Extra user note: ${extraPrompt}` : ""),
-        prompt: 'Return JSON like {"cards":[{category,challenge,hint?,timer?},...]} with ~40 unique cards.',
-        temperature: 0.85,
-      })
-
-      const json = JSON.parse(cleanJson(text.slice(text.indexOf("{"))))
-      const raw: any[] = json.cards ?? json.Cards ?? []
-      const valid: z.infer<typeof cardSchema>[] = []
-
-      for (const r of raw) {
-        const parsed = cardSchema.safeParse(normalise(r))
-        if (parsed.success) valid.push(parsed.data)
+function validateAndParseCard(cardData: any): Omit<ChallengeCard, "id" | "created_at"> | null {
+  try {
+    // Handle both direct object and string responses
+    let parsed = cardData
+    if (typeof cardData === "string") {
+      // Try to extract JSON from string response
+      const jsonMatch = cardData.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        parsed = JSON.parse(jsonMatch[0])
+      } else {
+        console.error("No valid JSON found in string response")
+        return null
       }
-      if (valid.length === 0) throw new Error("no valid cards")
+    }
 
-      const cards = valid.map((c) => ({
-        ...c,
-        hint: c.hint ?? null,
-        timer: c.timer ?? null,
-        ...categoryMap[c.category as Category],
-      }))
+    // Validate required fields
+    if (!parsed || typeof parsed !== "object") {
+      console.error("Invalid card data structure:", parsed)
+      return null
+    }
 
-      return { success: true, cards }
-    } catch {
-      /* retry */
+    const { category, challenge, color, icon, hint, timer } = parsed
+
+    // Check required fields
+    if (!category || !challenge || !color || !icon) {
+      console.error("Missing required fields:", { category, challenge, color, icon })
+      return null
+    }
+
+    // Validate category exists
+    const validCategory = CATEGORIES.find((cat) => cat.name === category)
+    if (!validCategory) {
+      console.error("Invalid category:", category)
+      return null
+    }
+
+    // Validate timer if present
+    let validTimer = null
+    if (timer !== undefined && timer !== null) {
+      const timerNum = Number.parseInt(timer)
+      if (!isNaN(timerNum) && timerNum > 0 && timerNum <= 300) {
+        validTimer = timerNum
+      }
+    }
+
+    return {
+      category: validCategory.name,
+      challenge: String(challenge).trim(),
+      color: validCategory.color,
+      icon: validCategory.icon,
+      hint: hint ? String(hint).trim() : null,
+      timer: validTimer,
+    }
+  } catch (error) {
+    console.error("Error parsing card data:", error)
+    return null
+  }
+}
+
+export async function generateCardsAction(theme?: string) {
+  try {
+    const themePrompt = theme ? `Theme: ${theme}\n\n` : ""
+
+    const prompt = `${themePrompt}Generate 5 unique challenge cards for a family party game. Each card should be a JSON object with these exact fields:
+
+{
+  "category": "one of: Face Off, Think Fast, Teamwork, Just Do It, Get Creative, Be Silly",
+  "challenge": "the challenge text (be specific and clear)",
+  "hint": "optional helpful hint or null",
+  "timer": "number of seconds for timed challenges or null"
+}
+
+IMPORTANT TIMER GUIDELINES:
+- "Think Fast" challenges should usually have a timer (10-60 seconds)
+- "Just Do It" challenges with time pressure should have a timer (15-120 seconds)
+- "Face Off" challenges typically don't need timers (they end when someone can't continue)
+- "Teamwork" challenges may have timers for coordination tasks
+- "Get Creative" and "Be Silly" challenges rarely need timers unless specifically time-based
+
+Examples:
+{"category": "Think Fast", "challenge": "Name 5 animals that start with the letter B", "hint": "Think of pets, farm animals, and wild animals", "timer": 30}
+{"category": "Just Do It", "challenge": "Stare into someone's eyes without blinking or laughing for 30 seconds", "hint": "Pick someone you're comfortable with", "timer": 30}
+{"category": "Face Off", "challenge": "Go around naming different pizza toppings until someone can't think of one", "hint": null, "timer": null}
+
+Return exactly 5 JSON objects, one per line, no additional text or formatting.`
+
+    const { text } = await generateText({
+      model: groq("llama-3.3-70b-versatile"),
+      prompt,
+      temperature: 0.8,
+    })
+
+    const lines = text
+      .trim()
+      .split("\n")
+      .filter((line) => line.trim())
+    const cards: Omit<ChallengeCard, "id" | "created_at">[] = []
+
+    for (const line of lines) {
+      try {
+        const cardData = JSON.parse(line.trim())
+        const validCard = validateAndParseCard(cardData)
+        if (validCard) {
+          cards.push(validCard)
+        }
+      } catch (error) {
+        console.error("Error parsing line:", line, error)
+        continue
+      }
+    }
+
+    if (cards.length === 0) {
+      throw new Error("No valid cards could be generated")
+    }
+
+    return { success: true, cards }
+  } catch (error) {
+    console.error("Error generating cards:", error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to generate cards",
     }
   }
-  return { success: false, error: "AI returned unusable data – try again." }
 }
 
-/* ------------------------------------------------------------------ */
-/*  5. Single-card edit                                               */
-/* ------------------------------------------------------------------ */
-export async function editCardAction(card: Omit<CardSuggestion, "id">, feedback: string) {
+export async function saveCardAction(card: Omit<ChallengeCard, "id" | "created_at">) {
   try {
+    const validCard = validateAndParseCard(card)
+    if (!validCard) {
+      throw new Error("Invalid card data")
+    }
+
+    const { data, error } = await supabaseAdmin.from("challenge_cards").insert([validCard]).select().single()
+
+    if (error) throw error
+
+    return { success: true, card: data }
+  } catch (error) {
+    console.error("Error saving card:", error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to save card",
+    }
+  }
+}
+
+// --- NEW: keep for legacy imports ---------------------------------
+export async function approveCardAction(card: Omit<ChallengeCard, "id" | "created_at">) {
+  // Re-use the validated insert logic from saveCardAction
+  return await saveCardAction(card)
+}
+// -------------------------------------------------------------------
+
+export async function editCardAction(originalCard: ChallengeCard, editInstructions: string) {
+  try {
+    const prompt = `Edit this challenge card based on the instructions:
+
+Original card:
+Category: ${originalCard.category}
+Challenge: ${originalCard.challenge}
+Hint: ${originalCard.hint || "none"}
+Timer: ${originalCard.timer || "none"}
+
+Edit instructions: ${editInstructions}
+
+IMPORTANT TIMER GUIDELINES:
+- "Think Fast" challenges should usually have a timer (10-60 seconds)
+- "Just Do It" challenges with time pressure should have a timer (15-120 seconds)
+- "Face Off" challenges typically don't need timers (they end when someone can't continue)
+- "Teamwork" challenges may have timers for coordination tasks
+- "Get Creative" and "Be Silly" challenges rarely need timers unless specifically time-based
+
+Return the edited card as a single JSON object with these exact fields:
+{
+  "category": "one of: Face Off, Think Fast, Teamwork, Just Do It, Get Creative, Be Silly",
+  "challenge": "the updated challenge text",
+  "hint": "updated hint or null",
+  "timer": "number of seconds or null"
+}
+
+Return only the JSON object, no additional text.`
+
     const { text } = await generateText({
-      model: groq("llama3-8b-8192"),
-      system: SINGLE_SYS,
-      prompt: `Original:\n${JSON.stringify({
-        category: card.category,
-        challenge: card.challenge,
-        hint: card.hint,
-        timer: card.timer,
-      })}\nFeedback: "${feedback}"`,
+      model: groq("llama-3.3-70b-versatile"),
+      prompt,
       temperature: 0.7,
     })
 
-    const revised = cardSchema.parse(normalise(JSON.parse(cleanJson(text.slice(text.indexOf("{"))))))
-    const newCard = { ...revised, ...categoryMap[revised.category as Category] }
-    return { success: true, card: newCard }
-  } catch (e) {
-    console.error("editCardAction error", e)
-    return { success: false, error: "AI edit failed." }
+    let cardData
+    try {
+      cardData = JSON.parse(text.trim())
+    } catch (parseError) {
+      // Try to extract JSON from response
+      const jsonMatch = text.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        cardData = JSON.parse(jsonMatch[0])
+      } else {
+        throw new Error("Could not parse AI response as JSON")
+      }
+    }
+
+    const validCard = validateAndParseCard(cardData)
+    if (!validCard) {
+      throw new Error("AI generated invalid card data")
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from("challenge_cards")
+      .update(validCard)
+      .eq("id", originalCard.id)
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return { success: true, card: data }
+  } catch (error) {
+    console.error("Error editing card:", error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to edit card",
+    }
   }
 }
 
-/* ------------------------------------------------------------------ */
-/*  6. Insert to DB                                                   */
-/* ------------------------------------------------------------------ */
-export async function approveCardAction(card: Omit<CardSuggestion, "id">) {
-  const { error } = await supabaseAdmin.from("challenge_cards").insert([
-    {
-      category: card.category,
-      challenge: card.challenge,
-      color: card.color,
-      icon: card.icon,
-      hint: card.hint,
-      timer: card.timer,
-    },
-  ])
-  return error ? { success: false, error: error.message } : { success: true }
+export async function getCardCountAction() {
+  try {
+    const { count, error } = await supabaseAdmin.from("challenge_cards").select("*", { count: "exact", head: true })
+
+    if (error) throw error
+
+    return { success: true, count: count || 0 }
+  } catch (error) {
+    console.error("Error getting card count:", error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to get card count",
+    }
+  }
 }

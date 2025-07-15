@@ -11,7 +11,7 @@ export type Category =
 
 export interface ChallengeCard {
   id: number
-  category: Category
+  category: string
   challenge: string
   color: string
   icon: string
