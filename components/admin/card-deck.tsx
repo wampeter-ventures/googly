@@ -104,7 +104,7 @@ export default function CardDeck() {
         <Button
           onClick={generateCards}
           disabled={isGenerating}
-          className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+          className="w-full bg-black hover:bg-gray-800 text-white"
         >
           {isGenerating ? (
             <>
