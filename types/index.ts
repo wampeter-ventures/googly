@@ -18,6 +18,7 @@ export interface ChallengeCard {
   hint: string | null
   timer: number | null
   created_at: string
+  modes: string[]
 }
 
 export interface CardSuggestion {
@@ -28,4 +29,5 @@ export interface CardSuggestion {
   icon: string
   hint: string | null
   timer: number | null
+  modes: string[]
 }

@@ -2,7 +2,7 @@
 
 import { generateText } from "ai"
 import { groq } from "@ai-sdk/groq"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { supabaseAdmin, supabase } from "@/lib/supabase-admin"
 import type { ChallengeCard } from "@/types"
 
 const CATEGORIES = [
@@ -44,211 +44,220 @@ const CATEGORIES = [
   },
 ]
 
-function validateAndParseCard(cardData: any): Omit<ChallengeCard, "id" | "created_at"> | null {
-  try {
-    // Handle both direct object and string responses
-    let parsed = cardData
-    if (typeof cardData === "string") {
-      // Try to extract JSON from string response
-      const jsonMatch = cardData.match(/\{[\s\S]*\}/)
-      if (jsonMatch) {
-        parsed = JSON.parse(jsonMatch[0])
-      } else {
-        console.error("No valid JSON found in string response")
-        return null
-      }
-    }
+const MODES = {
+  eating_together: "Can be done while sitting at a dinner table. Minimal physical movement.",
+  at_home: "Suitable for a living room or general indoor space. Some movement is okay.",
+  outside: "Best done outdoors. Might require space, make a mess, or be loud.",
+}
 
-    // Validate required fields
-    if (!parsed || typeof parsed !== "object") {
-      console.error("Invalid card data structure:", parsed)
-      return null
-    }
+/**
+ * Extracts a JSON object from a string, handling various edge cases and malformed responses.
+ */
+function extractJson(text: string): any {
+  // Remove any markdown code block markers
+  const cleanText = text.replace(/```json\s*|\s*```/g, "").trim()
 
-    const { category, challenge, color, icon, hint, timer } = parsed
+  // Find the first opening brace or bracket
+  const openBrace = cleanText.indexOf("{")
+  const openBracket = cleanText.indexOf("[")
 
-    // Check required fields
-    if (!category || !challenge || !color || !icon) {
-      console.error("Missing required fields:", { category, challenge, color, icon })
-      return null
-    }
+  let start = -1
+  let isArray = false
 
-    // Validate category exists
-    const validCategory = CATEGORIES.find((cat) => cat.name === category)
-    if (!validCategory) {
-      console.error("Invalid category:", category)
-      return null
-    }
-
-    // Validate timer if present
-    let validTimer = null
-    if (timer !== undefined && timer !== null) {
-      const timerNum = Number.parseInt(timer)
-      if (!isNaN(timerNum) && timerNum > 0 && timerNum <= 300) {
-        validTimer = timerNum
-      }
-    }
-
-    return {
-      category: validCategory.name,
-      challenge: String(challenge).trim(),
-      color: validCategory.color,
-      icon: validCategory.icon,
-      hint: hint ? String(hint).trim() : null,
-      timer: validTimer,
-    }
-  } catch (error) {
-    console.error("Error parsing card data:", error)
-    return null
+  if (openBrace === -1 && openBracket === -1) {
+    throw new Error("No JSON found in response")
   }
+
+  if (openBrace === -1) {
+    start = openBracket
+    isArray = true
+  } else if (openBracket === -1) {
+    start = openBrace
+    isArray = false
+  } else {
+    start = Math.min(openBrace, openBracket)
+    isArray = start === openBracket
+  }
+
+  // Find the matching closing brace/bracket
+  let depth = 0
+  let inString = false
+  let escaped = false
+  let end = -1
+
+  const targetOpen = isArray ? "[" : "{"
+  const targetClose = isArray ? "]" : "}"
+
+  for (let i = start; i < cleanText.length; i++) {
+    const char = cleanText[i]
+
+    if (escaped) {
+      escaped = false
+      continue
+    }
+
+    if (char === "\\" && inString) {
+      escaped = true
+      continue
+    }
+
+    if (char === '"' && !escaped) {
+      inString = !inString
+      continue
+    }
+
+    if (!inString) {
+      if (char === targetOpen) {
+        depth++
+      } else if (char === targetClose) {
+        depth--
+        if (depth === 0) {
+          end = i
+          break
+        }
+      }
+    }
+  }
+
+  if (end === -1) {
+    throw new Error("No matching closing bracket/brace found")
+  }
+
+  const jsonStr = cleanText.substring(start, end + 1)
+  return JSON.parse(jsonStr)
 }
 
-export async function generateCardsAction(theme?: string) {
+export async function generateCardsAction() {
   try {
-    const themePrompt = theme ? `Theme: ${theme}\n\n` : ""
+    // Fetch existing cards to avoid duplicates and understand the vibe
+    const { data: existingCards, error: fetchError } = await supabase
+      .from("challenge_cards")
+      .select("challenge")
+      .order("created_at", { ascending: false })
+      .limit(200)
 
-    const prompt = `${themePrompt}Generate 5 unique challenge cards for a family party game. Each card should be a JSON object with these exact fields:
+    if (fetchError) {
+      console.error("Error fetching existing cards:", fetchError)
+      return { success: false, error: "Failed to fetch existing cards" }
+    }
 
-{
-  "category": "one of: Face Off, Think Fast, Teamwork, Just Do It, Get Creative, Be Silly",
-  "challenge": "the challenge text (be specific and clear)",
-  "hint": "optional helpful hint or null",
-  "timer": "number of seconds for timed challenges or null"
-}
-
-IMPORTANT TIMER GUIDELINES:
-- "Think Fast" challenges should usually have a timer (10-60 seconds)
-- "Just Do It" challenges with time pressure should have a timer (15-120 seconds)
-- "Face Off" challenges typically don't need timers (they end when someone can't continue)
-- "Teamwork" challenges may have timers for coordination tasks
-- "Get Creative" and "Be Silly" challenges rarely need timers unless specifically time-based
-
-Examples:
-{"category": "Think Fast", "challenge": "Name 5 animals that start with the letter B", "hint": "Think of pets, farm animals, and wild animals", "timer": 30}
-{"category": "Just Do It", "challenge": "Stare into someone's eyes without blinking or laughing for 30 seconds", "hint": "Pick someone you're comfortable with", "timer": 30}
-{"category": "Face Off", "challenge": "Go around naming different pizza toppings until someone can't think of one", "hint": null, "timer": null}
-
-Return exactly 5 JSON objects, one per line, no additional text or formatting.`
+    const existingChallenges = existingCards?.map((card) => card.challenge) || []
+    const existingChallengesText =
+      existingChallenges.length > 0
+        ? `\n\nEXISTING CHALLENGES TO AVOID DUPLICATING:\n${existingChallenges.map((c) => `- "${c}"`).join("\n")}`
+        : ""
 
     const { text } = await generateText({
       model: groq("llama-3.3-70b-versatile"),
-      prompt,
-      temperature: 0.8,
+      temperature: 0.7,
+      prompt: `Generate 5 **inventive, delightful, and playfully challenging** cards for a family party game.
+
+Return a single JSON array of 5 card objects. Each challenge should feel fresh, funny, and memorable—like a moment you'd want to tell someone about later.
+
+Each card should aim for one or more of these qualities:
+- 💡 **Clever**: includes a surprising twist, constraint, or wordplay
+- 😂 **Silly**: makes people laugh or feel delightfully weird
+- 🤝 **Social**: involves interaction with others or copying/mirroring
+- 🎭 **Active**: involves faces, hands, bodies, or voices (but not complex setup)
+- 🧠 **Doable**: works within 1 minute, with no special tools
+
+Avoid generic list-style prompts (e.g., "Name 5 things"). Think improv, Taskmaster, and recess energy.
+
+Examples of Great Challenges:
+"Pretend you're a piece of toast popping out of a toaster." (silly, body-based)
+"Try to clap in sync 10 times with a partner." (social, rhythmic)
+"Give a high-five to everyone at the table without using your hands." (surprising constraint)
+"Sing 'Happy Birthday' to the tune of Twinkle Twinkle." (cognitive twist)
+"Point to things in the room that start with the same letter until someone guesses it." (mystery + environment use)
+
+Each card object should have:
+{
+  "challenge": "The challenge text",
+  "category": "One of: Creative, Physical, Social, Teamwork, Face Off, Mental, Silly",
+  "icon": "Single emoji that represents the challenge",
+  "color": "One of: bg-red-100, bg-blue-100, bg-green-100, bg-yellow-100, bg-purple-100, bg-pink-100, bg-indigo-100, bg-orange-100",
+  "hint": "Optional helpful hint (can be null)",
+  "timer": "Optional timer in seconds for time-based challenges (can be null)",
+  "modes": ["eating_together", "at_home", "outside"]
+}
+
+For modes, START with all three modes and only EXCLUDE a mode if there's a specific reason:
+- EXCLUDE "eating_together" only if: requires big body movements, loud noises, or messy actions inappropriate for a restaurant
+- EXCLUDE "at_home" only if: requires outdoor space, weather, or natural elements
+- EXCLUDE "outside" only if: requires indoor furniture, kitchen items, or privacy
+
+Most challenges should include ALL THREE modes unless there's a clear incompatibility.
+
+Return ONLY the JSON array, no other text.${existingChallengesText}`,
     })
 
-    const lines = text
-      .trim()
-      .split("\n")
-      .filter((line) => line.trim())
-    const cards: Omit<ChallengeCard, "id" | "created_at">[] = []
+    console.log("AI Response:", text)
 
-    for (const line of lines) {
-      try {
-        const cardData = JSON.parse(line.trim())
-        const validCard = validateAndParseCard(cardData)
-        if (validCard) {
-          cards.push(validCard)
-        }
-      } catch (error) {
-        console.error("Error parsing line:", line, error)
-        continue
-      }
+    const cards = extractJson(text)
+
+    if (!Array.isArray(cards) || cards.length === 0) {
+      return { success: false, error: "AI did not return a valid array of cards" }
     }
 
-    if (cards.length === 0) {
-      throw new Error("No valid cards could be generated")
+    // Insert cards into database
+    const { data, error } = await supabase.from("challenge_cards").insert(cards).select()
+
+    if (error) {
+      console.error("Database error:", error)
+      return { success: false, error: "Failed to save cards to database" }
     }
 
-    return { success: true, cards }
+    return { success: true, cards: data }
   } catch (error) {
-    console.error("Error generating cards:", error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to generate cards",
-    }
+    console.error("Error in generateCardsAction:", error)
+    return { success: false, error: "Failed to generate cards" }
   }
 }
 
 export async function saveCardAction(card: Omit<ChallengeCard, "id" | "created_at">) {
   try {
-    const validCard = validateAndParseCard(card)
-    if (!validCard) {
-      throw new Error("Invalid card data")
-    }
+    const { challenge, category, icon, color, hint, timer, modes } = card
 
-    const { data, error } = await supabaseAdmin.from("challenge_cards").insert([validCard]).select().single()
+    if (!challenge || !category || !icon || !color) throw new Error("Invalid card data provided.")
 
+    const { data, error } = await supabaseAdmin.from("challenge_cards").insert([card]).select().single()
     if (error) throw error
 
     return { success: true, card: data }
   } catch (error) {
-    console.error("Error saving card:", error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to save card",
-    }
+    console.error("Error in saveCardAction:", error)
+    return { success: false, error: error instanceof Error ? error.message : "Failed to save card" }
   }
 }
 
-// --- NEW: keep for legacy imports ---------------------------------
-export async function approveCardAction(card: Omit<ChallengeCard, "id" | "created_at">) {
-  // Re-use the validated insert logic from saveCardAction
-  return await saveCardAction(card)
-}
-// -------------------------------------------------------------------
-
 export async function editCardAction(originalCard: ChallengeCard, editInstructions: string) {
   try {
-    const prompt = `Edit this challenge card based on the instructions:
+    const prompt = `Edit this challenge card based on the instructions.
 
-Original card:
-Category: ${originalCard.category}
-Challenge: ${originalCard.challenge}
-Hint: ${originalCard.hint || "none"}
-Timer: ${originalCard.timer || "none"}
+Original Card:
+${JSON.stringify(originalCard, null, 2)}
 
-Edit instructions: ${editInstructions}
+Edit Instructions:
+${editInstructions}
 
-IMPORTANT TIMER GUIDELINES:
-- "Think Fast" challenges should usually have a timer (10-60 seconds)
-- "Just Do It" challenges with time pressure should have a timer (15-120 seconds)
-- "Face Off" challenges typically don't need timers (they end when someone can't continue)
-- "Teamwork" challenges may have timers for coordination tasks
-- "Get Creative" and "Be Silly" challenges rarely need timers unless specifically time-based
+**Mode Assignment Rules:**
+- **DEFAULT**: Include ALL three modes ["eating_together", "at_home", "outside"] unless there's a specific reason to exclude one.
+- **eating_together**: EXCLUDE only if the challenge requires big body movements, loud noises, or messy actions inappropriate for a restaurant.
+- **at_home**: EXCLUDE only if it requires outdoor space, weather, or natural elements.
+- **outside**: EXCLUDE only if it requires indoor furniture, kitchen items, or privacy.
 
-Return the edited card as a single JSON object with these exact fields:
-{
-  "category": "one of: Face Off, Think Fast, Teamwork, Just Do It, Get Creative, Be Silly",
-  "challenge": "the updated challenge text",
-  "hint": "updated hint or null",
-  "timer": "number of seconds or null"
-}
-
-Return only the JSON object, no additional text.`
+Return the completely updated card as a single JSON object. The schema must include "category", "challenge", "hint", "timer", and "modes".
+Use these mode keys: ${Object.keys(MODES).join(", ")}.
+Return only the JSON object.`
 
     const { text } = await generateText({
-      model: groq("llama-3.3-70b-versatile"),
+      model: groq("llama-3.1-70b-versatile"),
       prompt,
       temperature: 0.7,
     })
 
-    let cardData
-    try {
-      cardData = JSON.parse(text.trim())
-    } catch (parseError) {
-      // Try to extract JSON from response
-      const jsonMatch = text.match(/\{[\s\S]*\}/)
-      if (jsonMatch) {
-        cardData = JSON.parse(jsonMatch[0])
-      } else {
-        throw new Error("Could not parse AI response as JSON")
-      }
-    }
-
-    const validCard = validateAndParseCard(cardData)
-    if (!validCard) {
-      throw new Error("AI generated invalid card data")
-    }
+    const validCard = JSON.parse(text)
+    if (!validCard || typeof validCard !== "object") throw new Error("AI generated invalid card data.")
 
     const { data, error } = await supabaseAdmin
       .from("challenge_cards")
@@ -261,11 +270,109 @@ Return only the JSON object, no additional text.`
 
     return { success: true, card: data }
   } catch (error) {
-    console.error("Error editing card:", error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to edit card",
+    console.error("Error in editCardAction:", error)
+    return { success: false, error: error instanceof Error ? error.message : "Failed to edit card" }
+  }
+}
+
+export async function getUncategorizedCardCountAction() {
+  try {
+    const { count, error } = await supabaseAdmin
+      .from("challenge_cards")
+      .select("*", { count: "exact", head: true })
+      .or("modes.is.null,modes.eq.{}")
+
+    if (error) throw error
+    return { success: true, count: count || 0 }
+  } catch (error) {
+    console.error("Error in getUncategorizedCardCountAction:", error)
+    return { success: false, error: error instanceof Error ? error.message : "Failed to get count" }
+  }
+}
+
+export async function backfillCardModesAction() {
+  try {
+    // Get cards without modes
+    const { data: cards, error: fetchError } = await supabase
+      .from("challenge_cards")
+      .select("*")
+      .or("modes.is.null,modes.eq.{}")
+      .limit(10)
+
+    if (fetchError) {
+      console.error("Error fetching cards:", fetchError)
+      return { success: false, error: "Failed to fetch cards" }
     }
+
+    if (!cards || cards.length === 0) {
+      return { success: true, message: "No cards need mode assignment" }
+    }
+
+    const cardsForAI = cards.map((card) => ({
+      id: card.id,
+      challenge: card.challenge,
+      category: card.category,
+    }))
+
+    const { text } = await generateText({
+      model: groq("llama-3.3-70b-versatile"),
+      temperature: 0.3,
+      prompt: `You are categorizing challenge cards for a family party game into modes.
+
+For each card, START with all three modes: ["eating_together", "at_home", "outside"]
+
+Only EXCLUDE a mode if there's a specific reason:
+- EXCLUDE "eating_together" only if: requires big body movements, loud noises, or messy actions inappropriate for a restaurant
+- EXCLUDE "at_home" only if: requires outdoor space, weather, or natural elements  
+- EXCLUDE "outside" only if: requires indoor furniture, kitchen items, or privacy
+
+Most challenges should include ALL THREE modes unless there's a clear incompatibility.
+
+Cards to categorize:
+${cardsForAI.map((card) => `ID ${card.id}: "${card.challenge}" (${card.category})`).join("\n")}
+
+Return ONLY a JSON array of objects with id and modes:
+[
+  {"id": 1, "modes": ["eating_together", "at_home", "outside"]},
+  {"id": 2, "modes": ["at_home", "outside"]}
+]
+
+Examples:
+- "Dance like a robot" → ["at_home", "outside"] (exclude eating_together: big movements)
+- "Whisper a secret" → ["eating_together", "at_home"] (exclude outside: privacy needed)
+- "Make a funny face" → ["eating_together", "at_home", "outside"] (works everywhere)
+- "Find something blue" → ["eating_together", "at_home", "outside"] (works everywhere)
+
+Return ONLY the JSON array.`,
+    })
+
+    console.log("AI Response for backfill:", text)
+
+    const updates = extractJson(text)
+
+    if (!Array.isArray(updates)) {
+      return { success: false, error: "AI did not return valid JSON for mode backfill." }
+    }
+
+    // Update each card
+    let updatedCount = 0
+    for (const update of updates) {
+      if (update.id && Array.isArray(update.modes)) {
+        const { error } = await supabase.from("challenge_cards").update({ modes: update.modes }).eq("id", update.id)
+
+        if (!error) {
+          updatedCount++
+        }
+      }
+    }
+
+    return {
+      success: true,
+      message: `Updated ${updatedCount} cards with mode assignments`,
+    }
+  } catch (error) {
+    console.error("Error in backfillCardModesAction:", error)
+    return { success: false, error: "AI did not return valid JSON for mode backfill." }
   }
 }
 
@@ -283,4 +390,39 @@ export async function getCardCountAction() {
       error: error instanceof Error ? error.message : "Failed to get card count",
     }
   }
+}
+
+export async function deleteCardAction(id: number) {
+  try {
+    const { error } = await supabase.from("challenge_cards").delete().eq("id", id)
+
+    if (error) {
+      return { success: false, error: "Failed to delete card" }
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error("Error deleting card:", error)
+    return { success: false, error: "Failed to delete card" }
+  }
+}
+
+export async function updateCardAction(id: number, updates: any) {
+  try {
+    const { error } = await supabase.from("challenge_cards").update(updates).eq("id", id)
+
+    if (error) {
+      return { success: false, error: "Failed to update card" }
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error("Error updating card:", error)
+    return { success: false, error: "Failed to update card" }
+  }
+}
+
+// Legacy action for compatibility
+export async function approveCardAction(card: Omit<ChallengeCard, "id" | "created_at">) {
+  return await saveCardAction(card)
 }
