@@ -98,6 +98,8 @@ export async function generateCardsAction(theme?: string) {
 
 Return a single JSON array of 5 card objects. Each challenge should feel fresh, funny, and memorable—like a moment you'd want to tell someone about later.
 
+${themePrompt}
+
 Each card should aim for one or more of these qualities:
 - 💡 **Clever**: includes a surprising twist, constraint, or wordplay
 - 😂 **Silly**: makes people laugh or feel delightfully weird
@@ -340,5 +342,24 @@ Return ONLY the JSON array, no other text.`
   } catch (error) {
     console.error("Error in backfillCardModesAction:", error)
     return { success: false, error: "AI did not return valid JSON for mode backfill." }
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Return the TOTAL number of cards in the challenge_cards table
+// -----------------------------------------------------------------------------
+export async function getCardCountAction() {
+  try {
+    const { count, error } = await supabase.from("challenge_cards").select("*", { head: true, count: "exact" })
+
+    if (error) {
+      console.error("Supabase count error:", error)
+      return { success: false, error: "Failed to count cards" }
+    }
+
+    return { success: true, count: count ?? 0 }
+  } catch (err) {
+    console.error("Error in getCardCountAction:", err)
+    return { success: false, error: "Failed to count cards" }
   }
 }

@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { BarChart3, HelpCircle, Loader2 } from "lucide-react"
@@ -132,6 +131,7 @@ export default function MobileChallengeGame() {
   const [showHint, setShowHint] = useState(false)
   const [revealedCards, setRevealedCards] = useState<TurnResult[]>([])
   const [cachedShuffleUrl, setCachedShuffleUrl] = useState<string>("")
+  const [cachedModeVideos, setCachedModeVideos] = useState<Record<string, string>>({})
   const [isCountingDown, setIsCountingDown] = useState(false)
   const [countdownComplete, setCountdownComplete] = useState(false)
 
@@ -148,9 +148,29 @@ export default function MobileChallengeGame() {
     const savedStats = localStorage.getItem("googly-game-stats")
     if (savedStats) setStats(JSON.parse(savedStats))
 
-    cacheVideo(
-      "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/PtFwYmR5hoJf8M2xfiiVq3/public/shuffle.mp4",
-    ).then(setCachedShuffleUrl)
+    const videosToCache = {
+      shuffle:
+        "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/PtFwYmR5hoJf8M2xfiiVq3/public/shuffle.mp4",
+      random: "/random.mp4",
+      eating: "/eating.mp4",
+      home: "/home.mp4",
+      outside: "/outside.mp4",
+    }
+
+    const cacheAllVideos = async () => {
+      const shuffleUrl = await cacheVideo(videosToCache.shuffle)
+      setCachedShuffleUrl(shuffleUrl)
+
+      const modeVideoUrls: Record<string, string> = {}
+      const modeVideoKeys = ["random", "eating", "home", "outside"] as const
+      for (const key of modeVideoKeys) {
+        const videoPath = videosToCache[key]
+        modeVideoUrls[videoPath] = await cacheVideo(videoPath)
+      }
+      setCachedModeVideos(modeVideoUrls)
+    }
+
+    cacheAllVideos()
   }, [])
 
   const saveStats = (newStats: Stats) => {
@@ -278,10 +298,10 @@ export default function MobileChallengeGame() {
 
   const ModeSelectionScreen = () => {
     const modes = [
-      { name: "Surprise Us", key: null, image: "/random.png" },
-      { name: "Eating Together", key: "eating_together", image: "/eating.png" },
-      { name: "At Home", key: "at_home", image: "/home.png" },
-      { name: "Outside", key: "outside", image: "/outside.png" },
+      { name: "Surprise Us", key: null, image: "/random.png", video: "/random.mp4" },
+      { name: "Eating Together", key: "eating_together", image: "/eating.png", video: "/eating.mp4" },
+      { name: "At Home", key: "at_home", image: "/home.png", video: "/home.mp4" },
+      { name: "Outside", key: "outside", image: "/outside.png", video: "/outside.mp4" },
     ]
 
     return (
@@ -297,13 +317,18 @@ export default function MobileChallengeGame() {
               onClick={() => startGameWithMode(mode.key)}
               className="aspect-[4/5] bg-white rounded-2xl shadow-lg border-2 border-gray-200 flex flex-col items-center justify-center p-4 text-center space-y-3 transform transition-transform hover:scale-105 active:scale-100"
             >
-              <Image
-                src={mode.image || "/placeholder.svg"}
-                alt={mode.name}
-                width={200}
-                height={200}
-                className="w-full h-auto flex-grow object-cover rounded-lg"
-              />
+              <div className="w-full h-auto flex-grow rounded-lg overflow-hidden">
+                <video
+                  key={mode.video}
+                  poster={mode.image}
+                  src={cachedModeVideos[mode.video]}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+              </div>
               <span className="font-grandstander text-gray-800 text-2xl">{mode.name}</span>
             </button>
           ))}
