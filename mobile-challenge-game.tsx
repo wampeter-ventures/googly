@@ -95,10 +95,10 @@ const allRatings: Rating[] = [
   { emoji: "😲", score: 86 },
   { emoji: "🤯", score: 90 },
   { emoji: "🤩", score: 94 },
-  { emoji: "🥳", score: 97 },
-  { emoji: "💖", score: 98 },
-  { emoji: "✨", score: 99 },
-  { emoji: "🌟", score: 99 },
+  { emoji: "🥳", score: 95 },
+  { emoji: "💖", score: 96 },
+  { emoji: "✨", score: 97 },
+  { emoji: "🌟", score: 98 },
   { emoji: "🎉", score: 99 },
   { emoji: "🦄", score: 100 },
 ]
@@ -114,7 +114,7 @@ for (let i = numRowsForRatingGrid - 1; i >= 0; i--) {
 
 const videosToCache = {
   logo: "/googly-logo.mp4",
-  shuffle: "/shuffle.MP4",
+  shuffle: "/shuffle.mp4",
   random: "/random.mp4",
   eating: "/eating.mp4",
   home: "/home.mp4",
