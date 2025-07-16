@@ -9,6 +9,7 @@ import GooglyEyesAnimation from "@/components/googly-eyes-animation"
 import CountdownTimer from "@/components/countdown-timer"
 import { supabase } from "@/lib/supabase"
 import type { ChallengeCard } from "@/types"
+import { cn } from "@/lib/utils"
 
 const videoCache = new Map<string, string>()
 const cacheVideo = async (url: string): Promise<string> => {
@@ -23,6 +24,31 @@ const cacheVideo = async (url: string): Promise<string> => {
     console.warn("Failed to cache video:", error)
     return url
   }
+}
+
+const categoryStyles: { [key: string]: string } = {
+  "Act It Out": "bg-gradient-to-br from-red-100 to-pink-200 border-red-400",
+  "Face Off": "bg-gradient-to-br from-orange-100 to-red-200 border-orange-400",
+  "Finders Sharers": "bg-gradient-to-br from-emerald-100 to-teal-200 border-emerald-400",
+  "Funny Face": "bg-gradient-to-br from-yellow-100 to-orange-200 border-yellow-400",
+  "Just Do It": "bg-gradient-to-br from-indigo-100 to-purple-200 border-indigo-400",
+  "Move It": "bg-gradient-to-br from-green-100 to-lime-200 border-green-400",
+  "Say/Sing": "bg-gradient-to-br from-purple-100 to-violet-200 border-purple-400",
+  Teamwork: "bg-gradient-to-br from-blue-100 to-cyan-200 border-blue-400",
+  "Think Fast": "bg-gradient-to-br from-amber-100 to-yellow-200 border-amber-400",
+}
+
+const fallbackColorStyles: { [key: string]: string } = {
+  red: "bg-red-200 border-red-400",
+  blue: "bg-blue-200 border-blue-400",
+  green: "bg-green-200 border-green-400",
+  yellow: "bg-yellow-200 border-yellow-400",
+  purple: "bg-purple-200 border-purple-400",
+  orange: "bg-orange-200 border-orange-400",
+}
+
+const getCardStyle = (category: string, fallbackColor: string) => {
+  return categoryStyles[category] || fallbackColorStyles[fallbackColor] || "bg-gray-200 border-gray-400"
 }
 
 type GameState = "menu" | "modeSelection" | "playing" | "ranking" | "finalRecap" | "stats"
@@ -122,7 +148,9 @@ export default function MobileChallengeGame() {
     const savedStats = localStorage.getItem("googly-game-stats")
     if (savedStats) setStats(JSON.parse(savedStats))
 
-    cacheVideo("https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/PtFwYmR5hoJf8M2xfiiVq3/public/shuffle.mp4").then(setCachedShuffleUrl)
+    cacheVideo(
+      "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/PtFwYmR5hoJf8M2xfiiVq3/public/shuffle.mp4",
+    ).then(setCachedShuffleUrl)
   }, [])
 
   const saveStats = (newStats: Stats) => {
@@ -234,10 +262,16 @@ export default function MobileChallengeGame() {
     <div className="flex flex-col items-center justify-center h-64 space-y-4">
       <div className="w-[80vw] max-w-md h-auto flex items-center justify-center">
         <video autoPlay loop muted playsInline className="w-full h-auto object-contain" poster="/shuffle-fallback.png">
-          <source src={cachedShuffleUrl || "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/PtFwYmR5hoJf8M2xfiiVq3/public/shuffle.mp4"} type="video/mp4" />
+          <source
+            src={
+              cachedShuffleUrl ||
+              "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/PtFwYmR5hoJf8M2xfiiVq3/public/shuffle.mp4"
+            }
+            type="video/mp4"
+          />
         </video>
       </div>
-      <div className="text-2xl font-bold text-gray-800 animate-bounce">🎴 Shuffling cards!</div>
+      <div className="text-4xl font-grandstander text-gray-800 animate-bounce">Shuffling cards!</div>
       <div className="text-sm text-gray-600 animate-pulse">Preparing your next challenge...</div>
     </div>
   )
@@ -256,21 +290,21 @@ export default function MobileChallengeGame() {
           <h1 className="text-3xl font-bold text-black">Choose a Mode</h1>
           <p className="text-gray-600">How are you playing today?</p>
         </div>
-        <div className="grid grid-cols-2 gap-4 w-full max-w-md">
+        <div className="grid grid-cols-2 gap-4 w-full max-w-lg">
           {modes.map((mode) => (
             <button
               key={mode.name}
               onClick={() => startGameWithMode(mode.key)}
-              className="aspect-square bg-white rounded-2xl shadow-lg border-2 border-gray-200 flex flex-col items-center justify-center p-2 text-center space-y-2 transform transition-transform hover:scale-105 active:scale-100"
+              className="aspect-[4/5] bg-white rounded-2xl shadow-lg border-2 border-gray-200 flex flex-col items-center justify-center p-4 text-center space-y-3 transform transition-transform hover:scale-105 active:scale-100"
             >
               <Image
                 src={mode.image || "/placeholder.svg"}
                 alt={mode.name}
-                width={128}
-                height={128}
-                className="w-24 h-24 rounded-lg object-cover"
+                width={200}
+                height={200}
+                className="w-full h-auto flex-grow object-cover rounded-lg"
               />
-              <span className="font-semibold text-gray-800 text-sm">{mode.name}</span>
+              <span className="font-grandstander text-gray-800 text-2xl">{mode.name}</span>
             </button>
           ))}
         </div>
@@ -304,7 +338,10 @@ export default function MobileChallengeGame() {
                     poster="/googly-game-logo.png"
                     onError={() => setVideoError(true)}
                   >
-                    <source src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/wwhug1CKP-YHcUmyv6n6fk/public/googly-logo.mp4" type="video/mp4" />
+                    <source
+                      src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/wwhug1CKP-YHcUmyv6n6fk/public/googly-logo.mp4"
+                      type="video/mp4"
+                    />
                   </video>
                 )}
               </div>
@@ -397,7 +434,7 @@ export default function MobileChallengeGame() {
         )}
         <div className="max-w-md mx-auto w-full">
           <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-black mb-2">Round {currentTurn} of 8</h2>
+            <h2 className="text-3xl font-grandstander text-black mb-2">Round {currentTurn} of 8</h2>
             <p className="text-gray-600">Pick your challenge!</p>
           </div>
           {isShuffling ? (
@@ -409,7 +446,13 @@ export default function MobileChallengeGame() {
               {currentCards.map((card) => (
                 <Card
                   key={card.id}
-                  className={`${card.color} border-2 cursor-pointer transform transition-all duration-300 min-h-[200px] flex flex-col justify-center ${selectedCard?.id === card.id ? "scale-105 ring-4 ring-black shadow-2xl" : "hover:scale-102 shadow-lg"}`}
+                  className={cn(
+                    "border-4 cursor-pointer transform transition-all duration-300 min-h-[200px] flex flex-col justify-center",
+                    getCardStyle(card.category, card.color),
+                    selectedCard?.id === card.id
+                      ? "scale-105 ring-4 ring-black shadow-2xl"
+                      : "hover:scale-102 shadow-lg",
+                  )}
                   onClick={() => selectCard(card)}
                 >
                   <CardContent className="p-6 relative overflow-hidden">
@@ -419,7 +462,7 @@ export default function MobileChallengeGame() {
                     <div className="relative z-10">
                       <div className="flex items-center gap-2 mb-3">
                         <span className="text-2xl">{card.icon}</span>
-                        <span className="font-semibold text-sm bg-white/90 px-2 py-1 rounded-full">
+                        <span className="font-grandstander text-sm bg-white/90 px-3 py-1 rounded-full">
                           {card.category}
                         </span>
                       </div>
@@ -519,7 +562,12 @@ export default function MobileChallengeGame() {
                 zIndex: index,
               }}
             >
-              <Card className={`${result.card.color} border-4 border-white shadow-2xl max-w-xs mx-auto`}>
+              <Card
+                className={cn(
+                  "border-4 border-white shadow-2xl max-w-xs mx-auto",
+                  getCardStyle(result.card.category, result.card.color),
+                )}
+              >
                 <CardContent className="p-4 text-center">
                   <div className="text-5xl mb-2">{result.emoji}</div>
                   <p className="font-medium text-gray-800 text-sm">{result.card.challenge}</p>

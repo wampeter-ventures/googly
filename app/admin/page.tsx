@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { approveCardAction } from "./actions"
+import { approveCardAction, editCardAction } from "./actions"
 import type { CardSuggestion } from "@/types"
 import { useToast } from "@/hooks/use-toast"
 import SuggestionCard from "@/components/admin/suggestion-card"
@@ -11,37 +11,50 @@ import BackfillModes from "@/components/admin/backfill-modes"
 export default function AdminPage() {
   const [suggestions, setSuggestions] = useState<CardSuggestion[]>([])
   const [savedCount, setSavedCount] = useState(0)
+  const [processingCardId, setProcessingCardId] = useState<string | null>(null)
   const { toast } = useToast()
 
   const handleSaveCard = async (card: CardSuggestion) => {
+    setProcessingCardId(card.id)
     const res = await approveCardAction(card)
     if (res.success) {
       setSavedCount((prev) => prev + 1)
       setSuggestions((prev) => prev.filter((s) => s.id !== card.id))
       toast({ title: "Card saved!", className: "bg-green-100" })
     } else {
-      toast({ title: res.error, variant: "destructive" })
+      toast({ title: "Error saving card", description: res.error, variant: "destructive" })
     }
+    setProcessingCardId(null)
   }
 
   const handlePassCard = (id: string) => {
     setSuggestions((prev) => prev.filter((s) => s.id !== id))
   }
 
-  const handleReplaceCard = (id: string, newCardData: Omit<CardSuggestion, "id">) => {
-    setSuggestions((prev) =>
-      prev.map((s) => {
-        if (s.id === id) {
-          return { ...s, ...newCardData }
-        }
-        return s
-      }),
-    )
+  const handleEditCard = async (card: CardSuggestion, instructions: string) => {
+    setProcessingCardId(card.id)
+    const { id, ...cardData } = card
+    const res = await editCardAction(cardData, instructions)
+
+    if (res.success && res.card) {
+      setSuggestions((prev) =>
+        prev.map((s) => {
+          if (s.id === id) {
+            return { ...s, ...res.card }
+          }
+          return s
+        }),
+      )
+      toast({ title: "Card updated!", className: "bg-blue-100" })
+    } else {
+      toast({ title: "Edit failed", description: res.error, variant: "destructive" })
+    }
+    setProcessingCardId(null)
   }
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-8">
-      <div className="max-w-2xl mx-auto space-y-12">
+      <div className="max-w-4xl mx-auto space-y-12">
         <div className="text-center">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Challenge Card Admin</h1>
           <p className="text-lg text-gray-600">Generate, review, and manage challenge cards.</p>
@@ -62,7 +75,8 @@ export default function AdminPage() {
                   card={card}
                   onPass={() => handlePassCard(card.id)}
                   onKeep={() => handleSaveCard(card)}
-                  replaceCard={handleReplaceCard}
+                  onEdit={(instructions) => handleEditCard(card, instructions)}
+                  isProcessing={processingCardId === card.id}
                 />
               ))}
             </div>

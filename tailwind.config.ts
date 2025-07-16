@@ -1,12 +1,13 @@
 import type { Config } from "tailwindcss"
 
-const config: Config = {
+const config = {
   darkMode: ["class"],
   content: [
     "./pages/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
     "./app/**/*.{ts,tsx}",
     "./src/**/*.{ts,tsx}",
+    "./*.{ts,tsx}",
     "*.{js,ts,jsx,tsx,mdx}",
   ],
   prefix: "",
@@ -20,10 +21,7 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
-        inter: ["Inter", "sans-serif"],
-        chewy: ["Chewy", "cursive"],
-        pangolin: ["Pangolin", "cursive"],
-        jua: ["Jua", "sans-serif"],
+        grandstander: ["var(--font-grandstander)", "cursive"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -74,10 +72,15 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "fade-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "fade-in": "fade-in 0.5s ease-out",
       },
     },
   },

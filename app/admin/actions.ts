@@ -3,7 +3,7 @@
 import { generateText } from "ai"
 import { groq } from "@ai-sdk/groq"
 import { supabase } from "@/lib/supabase"
-import type { ChallengeCard } from "@/types"
+import type { ChallengeCard, CardSuggestion } from "@/types"
 
 // Helper function to extract JSON from AI response
 function extractJson(text: string): any {
@@ -82,14 +82,19 @@ export async function generateCardsAction(theme?: string) {
     }
 
     const existingChallenges = existingCards?.map((card) => card.challenge) || []
+
+    const themePrompt = theme
+      ? `The user has provided a specific theme for this batch: "${theme}". All challenges should strongly reflect this theme.`
+      : "The user has not provided a specific theme, so create a variety of general, all-purpose family challenges."
+
+    const summaryText = `\n\nFINAL REMINDER: Your main goal is to generate 5 new, unique, and delightful challenges. Use the list of existing challenges for inspiration and to avoid duplicates. ${themePrompt} Remember to use the specific categories I provided and only add hints or timers when they genuinely improve the challenge.`
+
     const existingChallengesText =
       existingChallenges.length > 0
         ? `\n\nEXISTING CHALLENGES TO AVOID DUPLICATING:\n${existingChallenges.map((c) => `- "${c}"`).join("\n")}`
         : ""
 
-    const themeText = theme ? `Theme/Context: ${theme}\n\n` : ""
-
-    const prompt = `${themeText}Generate 5 **inventive, delightful, and playfully challenging** cards for a family party game.
+    const prompt = `Generate 5 **inventive, delightful, and playfully challenging** cards for a family party game.
 
 Return a single JSON array of 5 card objects. Each challenge should feel fresh, funny, and memorable—like a moment you'd want to tell someone about later.
 
@@ -102,34 +107,21 @@ Each card should aim for one or more of these qualities:
 
 Avoid generic list-style prompts (e.g., "Name 5 things"). Think improv, Taskmaster, and recess energy.
 
-Examples of Great Challenges:
-"Pretend you're a piece of toast popping out of a toaster." (silly, body-based)
-"Try to clap in sync 10 times with a partner." (social, rhythmic)
-"Give a high-five to everyone at the table without using your hands." (surprising constraint)
-"Sing 'Happy Birthday' to the tune of Twinkle Twinkle." (cognitive twist)
-"Point to things in the room that start with the same letter until someone guesses it." (mystery + environment use)
-
-For modes, default to including ALL THREE modes unless there's a specific reason to exclude:
-- "surprise_us": Include unless the challenge is too specific to a location
-- "eating_together": Exclude only if it requires big body movements that would disrupt dining
-- "at_home": Exclude only if it specifically requires being outdoors
-- "outside": Exclude only if it specifically requires indoor items/furniture or quiet indoor behavior
-
 Each card object should have:
 {
   "challenge": "string (the main challenge text)",
-  "hint": "string (optional helpful hint)",
-  "category": "string (Physical, Creative, Social, or Mental)",
-  "timer": number (seconds, typically 30-90),
-  "color": "string (red, blue, green, yellow, purple, or orange)",
+  "hint": "string | null (Optional: A helpful tip if the challenge is tricky. Many cards won't need one, but add one if it helps!)",
+  "category": "string (Choose ONE from this specific list: 'Face Off', 'Teamwork', 'Think Fast', 'Finders Sharers', 'Just Do It', 'Move It', 'Say/Sing', 'Act It Out', 'Funny Face')",
+  "timer": "number | null (Optional: Add a timer in seconds ONLY for challenges that are explicitly time-based, like a race or a 'how many can you do in X seconds' task. For example, a challenge like 'Stare at your partner for 5 seconds without laughing' MUST have a timer of 5.)",
+  "color": "string (red, blue, green, yellow, purple, or orange - this is a fallback, the category will determine the main color)",
   "icon": "string (emoji that represents the challenge)",
   "modes": ["surprise_us", "eating_together", "at_home", "outside"] (array of applicable modes)
 }
 
-Return ONLY the JSON array, no other text.${existingChallengesText}`
+Return ONLY the JSON array, no other text.${existingChallengesText}${summaryText}`
 
     const result = await generateText({
-      model: groq("llama-3.3-70b-versatile"),
+      model: groq("moonshotai/kimi-k2-instruct"),
       prompt,
       temperature: 0.3,
     })
@@ -144,7 +136,7 @@ Return ONLY the JSON array, no other text.${existingChallengesText}`
 
     // Validate each card has required fields
     for (const card of cards) {
-      if (!card.challenge || !card.category || !card.timer || !card.color || !card.icon) {
+      if (!card.challenge || !card.category || !card.color || !card.icon) {
         return { success: false, error: "Generated cards are missing required fields" }
       }
       // Ensure modes is an array
@@ -202,7 +194,7 @@ export async function saveCardAction(card: Omit<ChallengeCard, "id" | "created_a
   }
 }
 
-export async function editCardAction(card: ChallengeCard, instructions: string) {
+export async function editCardAction(card: Omit<CardSuggestion, "id">, instructions: string) {
   try {
     const prompt = `Edit this challenge card based on the instructions:
 
@@ -217,12 +209,12 @@ Modes: ${card.modes?.join(", ") || "None"}
 
 Instructions: ${instructions}
 
-Return the updated card as a JSON object with the same structure. Make sure to keep the same general spirit while applying the requested changes.
+Return the updated card as a JSON object with the same structure. Make sure to keep the same general spirit while applying the requested changes. The category must be one of the allowed values: "Face Off", "Teamwork", "Think Fast", "Finders Sharers", "Move It", "Say/Sing", "Act It Out", "Funny Face", "Just Do It". Do not change the 'modes' array.
 
 Return ONLY the JSON object, no other text.`
 
     const result = await generateText({
-      model: groq("llama-3.3-70b-versatile"),
+      model: groq("moonshotai/kimi-k2-instruct"),
       prompt,
       temperature: 0.3,
     })
@@ -235,15 +227,14 @@ Return ONLY the JSON object, no other text.`
       return { success: false, error: "AI did not return a valid updated card" }
     }
 
-    // Ensure modes is an array
-    if (!Array.isArray(updatedCard.modes)) {
-      updatedCard.modes = card.modes || ["surprise_us", "eating_together", "at_home", "outside"]
-    }
+    // Ensure modes is an array and is not changed by the AI
+    updatedCard.modes = card.modes
 
     return { success: true, card: updatedCard }
   } catch (error) {
     console.error("Error in editCardAction:", error)
-    return { success: false, error: "Failed to edit card" }
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred"
+    return { success: false, error: `Failed to edit card: ${errorMessage}` }
   }
 }
 
@@ -311,7 +302,7 @@ Most cards should have ALL FOUR modes unless there's a clear physical or logisti
 Return ONLY the JSON array, no other text.`
 
     const result = await generateText({
-      model: groq("llama-3.3-70b-versatile"),
+      model: groq("moonshotai/kimi-k2-instruct"),
       prompt,
       temperature: 0.3,
     })
