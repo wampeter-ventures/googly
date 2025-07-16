@@ -114,11 +114,11 @@ for (let i = numRowsForRatingGrid - 1; i >= 0; i--) {
 
 const videosToCache = {
   logo: "/googly-logo.mp4",
-  shuffle: "/shuffle.mp4",
-  random: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/mUkzHutBvlA4Xus4CQTatj/public/random.mp4",
-  eating: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/S5O8h-wD1ZwcY3vIxaClBd/public/eating.mp4",
-  home: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/jGZ8GGKM6RJZGSBaoZFhda/public/home.mp4",
-  outside: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/mabN9l19nPd66kYBUGDvKi/public/outside.mp4",
+  shuffle: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/4MNMtyJhrsI1navNf2zR5t/public/shuffle.mp4",
+  random: "/random.mp4",
+  eating: "/eating.mp4",
+  home: "/home.mp4",
+  outside: "/outside.mp4",
 }
 
 export default function MobileChallengeGame() {
