@@ -114,7 +114,7 @@ for (let i = numRowsForRatingGrid - 1; i >= 0; i--) {
 
 const videosToCache = {
   logo: "/googly-logo.mp4",
-  shuffle: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/4MNMtyJhrsI1navNf2zR5t/public/shuffle.mp4",
+  shuffle: "/shuffle.MP4",
   random: "/random.mp4",
   eating: "/eating.mp4",
   home: "/home.mp4",
