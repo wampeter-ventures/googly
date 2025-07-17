@@ -67,6 +67,28 @@ function extractJson(text: string): any {
   return JSON.parse(jsonStr)
 }
 
+// Helper function to normalize object keys to lowercase
+function normalizeCardKeys(obj: any): any {
+  const keyMap: { [key: string]: string } = {
+    Challenge: "challenge",
+    Hint: "hint",
+    Category: "category",
+    Timer: "timer",
+    Color: "color",
+    Icon: "icon",
+    Modes: "modes",
+  }
+
+  const normalized: any = {}
+
+  for (const [key, value] of Object.entries(obj)) {
+    const normalizedKey = keyMap[key] || key.toLowerCase()
+    normalized[normalizedKey] = value
+  }
+
+  return normalized
+}
+
 export async function generateCardsAction(theme?: string) {
   try {
     // Fetch existing cards to avoid duplicates and understand the vibe
@@ -87,19 +109,21 @@ export async function generateCardsAction(theme?: string) {
       ? `The user has provided a specific theme for this batch: "${theme}". All challenges should strongly reflect this theme.`
       : "The user has not provided a specific theme, so create a variety of general, all-purpose family challenges."
 
-    const summaryText = `\n\nFINAL REMINDER: Your main goal is to generate 5 new, unique, and delightful challenges. Use the list of existing challenges for inspiration and to avoid duplicates. ${themePrompt} Remember to use the specific categories I provided and only add hints or timers when they genuinely improve the challenge.`
+    const summaryText = `\n\nFINAL REMINDER: Your main goal is to generate 10 new, unique, and delightful challenges. Use the list of existing challenges for inspiration and to avoid duplicates. ${themePrompt} Remember to use the specific categories I provided and only add hints or timers when they genuinely improve the challenge.`
 
     const existingChallengesText =
       existingChallenges.length > 0
         ? `\n\nEXISTING CHALLENGES TO AVOID DUPLICATING:\n${existingChallenges.map((c) => `- "${c}"`).join("\n")}`
         : ""
 
-    const prompt = `Generate 5 **inventive, delightful, and playfully challenging** cards for a family party game.
+    const prompt = `Generate 10 **inventive, delightful, and playfully challenging** cards for a family party game.
 
-Return a single JSON array of 5 card objects. Each challenge should feel fresh, funny, and memorable—like a moment you'd want to tell someone about later.
+Return a single JSON array of 10 card objects. Each challenge should feel fresh, funny, and memorable—like a moment you'd want to tell someone about later.
 
+# CUSTOM PROMPT AND THEME
 ${themePrompt}
 
+# STYLE AND GOALS
 Each card should aim for one or more of these qualities:
 - 💡 **Clever**: includes a surprising twist, constraint, or wordplay
 - 😂 **Silly**: makes people laugh or feel delightfully weird
@@ -109,6 +133,7 @@ Each card should aim for one or more of these qualities:
 
 Avoid generic list-style prompts (e.g., "Name 5 things"). Think improv, Taskmaster, and recess energy.
 
+# JSON SCHEMA
 Each card object should have:
 {
   "challenge": "string (the main challenge text)",
@@ -120,7 +145,13 @@ Each card object should have:
   "modes": ["surprise_us", "eating_together", "at_home", "outside"] (array of applicable modes)
 }
 
-Return ONLY the JSON array, no other text.${existingChallengesText}${summaryText}`
+Return ONLY the JSON array, no other text.
+
+# EXISTING CHALLENGES, TO AVOID DUPLICATION
+${existingChallengesText}
+
+#SUMMARY
+${summaryText}`
 
     const result = await generateText({
       model: groq("moonshotai/kimi-k2-instruct"),
@@ -129,7 +160,6 @@ Return ONLY the JSON array, no other text.${existingChallengesText}${summaryText
     })
 
     console.log("AI Response:", result.text)
-
     const cards = extractJson(result.text)
 
     if (!Array.isArray(cards) || cards.length === 0) {
@@ -213,6 +243,17 @@ Instructions: ${instructions}
 
 Return the updated card as a JSON object with the same structure. Make sure to keep the same general spirit while applying the requested changes. The category must be one of the allowed values: "Face Off", "Teamwork", "Think Fast", "Finders Sharers", "Move It", "Say/Sing", "Act It Out", "Funny Face", "Just Do It". Do not change the 'modes' array.
 
+Use these exact lowercase field names:
+{
+  "challenge": "string",
+  "hint": "string or null",
+  "category": "string", 
+  "timer": "number or null",
+  "color": "string",
+  "icon": "string",
+  "modes": ["array of strings"]
+}
+
 Return ONLY the JSON object, no other text.`
 
     const result = await generateText({
@@ -222,8 +263,10 @@ Return ONLY the JSON object, no other text.`
     })
 
     console.log("AI Edit Response:", result.text)
+    let updatedCard = extractJson(result.text)
 
-    const updatedCard = extractJson(result.text)
+    // Normalize keys in case AI returns capitalized keys
+    updatedCard = normalizeCardKeys(updatedCard)
 
     if (!updatedCard.challenge || !updatedCard.category) {
       return { success: false, error: "AI did not return a valid updated card" }
@@ -295,7 +338,7 @@ ${cards.map((card, i) => `${i + 1}. "${card.challenge}" (Category: ${card.catego
 
 Return a JSON array with the same number of objects, each containing:
 {
-  "id": ${cards[0].id}, 
+  "id": ${cards[0].id},   
   "modes": ["surprise_us", "eating_together", "at_home", "outside"]
 }
 
@@ -310,7 +353,6 @@ Return ONLY the JSON array, no other text.`
     })
 
     console.log("AI Backfill Response:", result.text)
-
     const modeAssignments = extractJson(result.text)
 
     if (!Array.isArray(modeAssignments) || modeAssignments.length !== cards.length) {

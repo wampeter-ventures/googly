@@ -2,141 +2,135 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Sparkles } from "lucide-react"
 import SuggestionCard from "./suggestion-card"
+import SavedCounter from "./saved-counter"
 import { generateCardsAction, saveCardAction, editCardAction } from "@/app/admin/actions"
-import type { ChallengeCard } from "@/types"
+import type { CardSuggestion } from "@/types"
 
 export default function CardDeck() {
-  const [suggestions, setSuggestions] = useState<Omit<ChallengeCard, "id" | "created_at">[]>([])
+  const [prompt, setPrompt] = useState("")
+  const [cards, setCards] = useState<CardSuggestion[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [theme, setTheme] = useState("")
-  const [error, setError] = useState<string | null>(null)
+  const [processingCardIndex, setProcessingCardIndex] = useState<number | null>(null)
+  const [savedCount, setSavedCount] = useState(0)
 
-  const generateCards = async () => {
+  const handleGenerate = async () => {
+    if (!prompt.trim()) return
+
     setIsGenerating(true)
-    setError(null)
-
     try {
-      const result = await generateCardsAction(theme.trim() || undefined)
+      const result = await generateCardsAction(prompt)
       if (result.success) {
-        setSuggestions(result.cards)
+        setCards(result.cards)
       } else {
-        setError(result.error || "Failed to generate cards")
+        console.error("Error generating cards:", result.error)
       }
-    } catch (err) {
-      setError("An unexpected error occurred")
+    } catch (error) {
+      console.error("Error generating cards:", error)
     } finally {
       setIsGenerating(false)
     }
   }
 
-  const handleKeep = async (card: Omit<ChallengeCard, "id" | "created_at">) => {
-    setIsProcessing(true)
+  const handleKeep = async (card: CardSuggestion, index: number) => {
+    setProcessingCardIndex(index)
     try {
-      const result = await saveCardAction(card)
-      if (result.success) {
-        setSuggestions((prev) => prev.filter((c) => c !== card))
-      } else {
-        setError(result.error || "Failed to save card")
+      // Create a clean card object without React references
+      const cleanCard = {
+        challenge: card.challenge,
+        category: card.category,
+        icon: card.icon,
+        color: card.color,
+        timer: card.timer,
+        hint: card.hint,
+        modes: card.modes,
       }
-    } catch (err) {
-      setError("An unexpected error occurred")
+
+      await saveCardAction(cleanCard)
+      setSavedCount((prev) => prev + 1)
+
+      // Remove the card from the list
+      setCards((prev) => prev.filter((_, i) => i !== index))
+    } catch (error) {
+      console.error("Error saving card:", error)
     } finally {
-      setIsProcessing(false)
+      setProcessingCardIndex(null)
     }
   }
 
-  const handlePass = (card: Omit<ChallengeCard, "id" | "created_at">) => {
-    setSuggestions((prev) => prev.filter((c) => c !== card))
+  const handlePass = (index: number) => {
+    setCards((prev) => prev.filter((_, i) => i !== index))
   }
 
-  const handleEdit = async (card: Omit<ChallengeCard, "id" | "created_at">, instructions: string) => {
-    setIsProcessing(true)
+  const handleEdit = async (card: CardSuggestion, instructions: string, index: number) => {
+    setProcessingCardIndex(index)
     try {
-      // Create a temporary card with an ID for the edit action
-      const tempCard: ChallengeCard = {
-        ...card,
-        id: 0, // Temporary ID
-        created_at: new Date().toISOString(),
-      }
-
-      const result = await editCardAction(tempCard, instructions)
-      if (result.success) {
-        // Replace the card in suggestions with the edited version
-        setSuggestions((prev) =>
-          prev.map((c) =>
-            c === card
-              ? {
-                  category: result.card.category,
-                  challenge: result.card.challenge,
-                  color: result.card.color,
-                  icon: result.card.icon,
-                  hint: result.card.hint,
-                  timer: result.card.timer,
-                }
-              : c,
-          ),
-        )
+      const result = await editCardAction(card, instructions)
+      if (result.success && result.card) {
+        setCards((prev) => prev.map((c, i) => (i === index ? result.card : c)))
       } else {
-        setError(result.error || "Failed to edit card")
+        console.error("Error editing card:", result.error)
       }
-    } catch (err) {
-      setError("An unexpected error occurred")
+    } catch (error) {
+      console.error("Error editing card:", error)
     } finally {
-      setIsProcessing(false)
+      setProcessingCardIndex(null)
     }
   }
 
   return (
     <div className="space-y-6">
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Input
-            placeholder="Optional theme (e.g., 'holiday party', 'office team building')"
-            value={theme}
-            onChange={(e) => setTheme(e.target.value)}
-            className="w-full"
-          />
-        </div>
-        <Button
-          onClick={generateCards}
-          disabled={isGenerating}
-          className="w-full bg-black hover:bg-gray-800 text-white"
-        >
-          {isGenerating ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Generating Cards...
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-4 h-4 mr-2" />
-              Generate New Cards
-            </>
-          )}
-        </Button>
-      </div>
+      <SavedCounter count={savedCount} />
 
-      {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-800 text-sm">{error}</p>
-        </div>
-      )}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5" />
+            Generate Challenge Cards
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <label htmlFor="prompt" className="block text-sm font-medium mb-2">
+              Describe the type of challenges you want to create:
+            </label>
+            <Textarea
+              id="prompt"
+              placeholder="e.g., 'Christmas themed challenges for families' or 'outdoor summer activities' or 'silly challenges for kids'"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              className="min-h-[100px]"
+            />
+          </div>
+          <Button onClick={handleGenerate} disabled={!prompt.trim() || isGenerating} className="w-full">
+            {isGenerating ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Generating Cards...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4 mr-2" />
+                Generate 10 Cards
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
 
-      {suggestions.length > 0 && (
+      {cards.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900">Review Suggestions ({suggestions.length} remaining)</h3>
-          {suggestions.map((card, index) => (
+          {cards.map((card, index) => (
             <SuggestionCard
               key={index}
               card={card}
-              onKeep={handleKeep}
-              onPass={() => handlePass(card)}
-              onEdit={handleEdit}
-              isProcessing={isProcessing}
+              onKeep={() => handleKeep(card, index)}
+              onPass={() => handlePass(index)}
+              onEdit={(instructions) => handleEdit(card, instructions, index)}
+              isProcessing={processingCardIndex === index}
             />
           ))}
         </div>
