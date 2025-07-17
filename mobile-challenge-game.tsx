@@ -134,12 +134,16 @@ for (let i = numRowsForRatingGrid - 1; i >= 0; i--) {
 }
 
 const videosToCache = {
-  logo: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/wwhug1CKP-YHcUmyv6n6fk/public/googly-logo.mp4",
-  shuffle: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/OmGo6TzYAMSIiDKGs1VtA5/publichttps://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/oj1HzQJCntxxi9EKbV4moL/public/shuffle.mp4",
-  random: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/-UpWtZ0MRgUrln7-wMJ_Hr/publichttps://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/jv07mR7mVBCN2wy5MGqFGE/public/random.mp4",
-  eating: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/Cws56GLCO-xVUwvEVtVcBN/publichttps://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/aJ8gsXNscdSVYjPctsGnk_/public/eating.mp4",
-  home: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/J4c9F8VNOI1Y-axQJK6wok/publichttps://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/Ijl6M-_R8lahXm7hCtdd9T/public/home.mp4",
-  outside: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/edXhZNyaZODtsbcNoJNe-s/publichttps://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/Z9pCNpmEvjoAf1ojpAyrFr/public/outside.mp4",
+  logo: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/-weEh64GQGxhpep1IGd5m9/public/googly-game-logo.webp", // Updated to use the new webp blob
+  shuffle:
+    "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/oj1HzQJCntxxi9EKbV4moL/publichttps://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/oj1HzQJCntxxi9EKbV4moL/public/shuffle.mp4", // Updated to use new blob
+  random:
+    "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/jv07mR7mVBCN2wy5MGqFGE/publichttps://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/jv07mR7mVBCN2wy5MGqFGE/public/random.mp4", // Updated to use new blob
+  eating:
+    "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/aJ8gsXNscdSVYjPctsGnk_/publichttps://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/aJ8gsXNscdSVYjPctsGnk_/public/eating.mp4", // Updated to use new blob
+  home: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/Ijl6M-_R8lahXm7hCtdd9T/publichttps://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/Ijl6M-_R8lahXm7hCtdd9T/public/home.mp4", // Updated to use new blob
+  outside:
+    "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/Z9pCNpmEvjoAf1ojpAyrFr/publichttps://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/Z9pCNpmEvjoAf1ojpAyrFr/public/outside.mp4", // Updated to use new blob
 }
 
 const imagesToCache = {
