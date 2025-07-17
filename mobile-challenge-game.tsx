@@ -11,25 +11,7 @@ import { supabase } from "@/lib/supabase"
 import type { ChallengeCard } from "@/types"
 import { cn } from "@/lib/utils"
 
-const videoCache = new Map<string, string>()
 const imageCache = new Map<string, string>()
-
-const cacheVideo = async (url: string): Promise<string> => {
-  if (videoCache.has(url)) return videoCache.get(url)!
-  try {
-    console.log(`Caching video: ${url}`)
-    const response = await fetch(url)
-    if (!response.ok) throw new Error(`Failed to fetch video: ${response.statusText}`)
-    const blob = await response.blob()
-    const objectUrl = URL.createObjectURL(blob)
-    videoCache.set(url, objectUrl)
-    console.log(`Video cached successfully: ${url}`)
-    return objectUrl
-  } catch (error) {
-    console.warn(`Failed to cache video: ${url}`, error)
-    return url // Return original URL as fallback
-  }
-}
 
 const cacheImage = async (url: string): Promise<string> => {
   if (imageCache.has(url)) return imageCache.get(url)!
@@ -175,7 +157,6 @@ export default function MobileChallengeGame() {
   const [videoErrors, setVideoErrors] = useState<Record<string, boolean>>({})
   const [showHint, setShowHint] = useState(false)
   const [revealedCards, setRevealedCards] = useState<TurnResult[]>([])
-  const [cachedVideoUrls, setCachedVideoUrls] = useState<Record<string, string>>({})
   const [isCountingDown, setIsCountingDown] = useState(false)
   const [countdownComplete, setCountdownComplete] = useState(false)
   const [cachedImageUrls, setCachedImageUrls] = useState<Record<string, string>>({})
@@ -189,52 +170,30 @@ export default function MobileChallengeGame() {
       else setAllCards(data as ChallengeCard[])
       setIsLoadingCards(false)
     }
+
+    const preloadAllMedia = async () => {
+      console.log("Preloading media...")
+      const videoPromises = Object.values(videosToCache).map((path) =>
+        fetch(path).catch((err) => console.warn(`Failed to preload video: ${path}`, err)),
+      )
+      const imagePromises = Object.values(imagesToCache).map((path) =>
+        cacheImage(path).catch((err) => console.warn(`Failed to preload image: ${path}`, err)),
+      )
+
+      await Promise.all([...videoPromises, ...imagePromises])
+      setIsMediaReady(true)
+      console.log("Media is ready!")
+    }
+
     fetchCards()
+    preloadAllMedia()
 
     const savedStats = localStorage.getItem("googly-game-stats")
     if (savedStats) setStats(JSON.parse(savedStats))
-
-    const cacheAllMedia = async () => {
-      console.log("Starting media caching...")
-
-      // Cache videos
-      const videoPaths = Object.values(videosToCache)
-      const videoPromises = videoPaths.map((path) => cacheVideo(path))
-      const resolvedVideoUrls = await Promise.all(videoPromises)
-
-      const videoUrlMap = videoPaths.reduce(
-        (acc, path, index) => {
-          acc[path] = resolvedVideoUrls[index]
-          return acc
-        },
-        {} as Record<string, string>,
-      )
-
-      setCachedVideoUrls(videoUrlMap)
-
-      // Cache images
-      const imagePaths = Object.values(imagesToCache)
-      const imagePromises = imagePaths.map((path) => cacheImage(path))
-      const resolvedImageUrls = await Promise.all(imagePromises)
-
-      const imageUrlMap = imagePaths.reduce(
-        (acc, path, index) => {
-          acc[path] = resolvedImageUrls[index]
-          return acc
-        },
-        {} as Record<string, string>,
-      )
-
-      setCachedImageUrls(imageUrlMap)
-      setIsMediaReady(true)
-      console.log("Media is ready!")
-      console.log("Media caching completed")
-    }
-
-    cacheAllMedia()
   }, [])
 
   const handleVideoError = (videoPath: string) => {
+    console.warn(`Video error for path: ${videoPath}`)
     setVideoErrors((prev) => ({ ...prev, [videoPath]: true }))
   }
 
@@ -345,7 +304,6 @@ export default function MobileChallengeGame() {
   }, [gameState, revealedCards, turnResults])
 
   const ShufflingAnimation = () => {
-    const shuffleVideoUrl = cachedVideoUrls[videosToCache.shuffle]
     return (
       <div className="flex flex-col items-center justify-center h-64 space-y-4">
         <div className="w-[80vw] max-w-md h-auto flex items-center justify-center">
@@ -357,19 +315,17 @@ export default function MobileChallengeGame() {
               height={225}
             />
           ) : (
-            shuffleVideoUrl && (
-              <video
-                key={shuffleVideoUrl}
-                src={shuffleVideoUrl}
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="w-full h-auto object-contain"
-                poster={cachedImageUrls[imagesToCache.shuffleFallback] || "/shuffle-fallback.png"}
-                onError={() => handleVideoError(videosToCache.shuffle)}
-              />
-            )
+            <video
+              key={videosToCache.shuffle}
+              src={videosToCache.shuffle}
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-auto object-contain"
+              poster={cachedImageUrls[imagesToCache.shuffleFallback] || "/shuffle-fallback.png"}
+              onError={() => handleVideoError(videosToCache.shuffle)}
+            />
           )}
         </div>
         <div className="text-4xl font-grandstander text-gray-800 animate-bounce">Shuffling cards!</div>
@@ -392,59 +348,52 @@ export default function MobileChallengeGame() {
     ]
 
     return (
-      // ... outer div ...
       <div className="min-h-screen bg-[#F7F2E8] flex flex-col items-center justify-center p-4">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-black">Choose a Mode</h1>
           <p className="text-gray-600">How are you playing today?</p>
         </div>
         <div className="grid grid-cols-2 gap-4 w-full max-w-lg">
-          {modes.map((mode) => {
-            const modeVideoUrl = cachedVideoUrls[mode.video]
-            return (
-              <button
-                key={mode.name}
-                onClick={() => startGameWithMode(mode.key)}
-                className="aspect-[4/5] bg-white rounded-2xl shadow-lg border-2 border-gray-200 flex flex-col items-center justify-center p-4 text-center space-y-3 transform transition-transform hover:scale-105 active:scale-100"
-              >
-                <div className="w-full h-auto flex-grow rounded-lg overflow-hidden">
-                  {videoErrors[mode.video] ? (
-                    <Image
-                      src={cachedImageUrls[mode.image] || mode.image || "/placeholder.svg"}
-                      alt={mode.name}
-                      width={200}
-                      height={250}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    modeVideoUrl && (
-                      <video
-                        key={modeVideoUrl}
-                        poster={cachedImageUrls[mode.image] || mode.image}
-                        src={modeVideoUrl}
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                        className="w-full h-full object-cover"
-                        onError={() => handleVideoError(mode.video)}
-                      />
-                    )
-                  )}
-                </div>
-                <span className="font-grandstander text-gray-800 text-2xl h-16 flex items-center justify-center">
-                  {mode.name}
-                </span>
-              </button>
-            )
-          })}
+          {modes.map((mode) => (
+            <button
+              key={mode.name}
+              onClick={() => startGameWithMode(mode.key)}
+              className="aspect-[4/5] bg-white rounded-2xl shadow-lg border-2 border-gray-200 flex flex-col items-center justify-center p-4 text-center space-y-3 transform transition-transform hover:scale-105 active:scale-100"
+            >
+              <div className="w-full h-auto flex-grow rounded-lg overflow-hidden">
+                {videoErrors[mode.video] ? (
+                  <Image
+                    src={cachedImageUrls[mode.image] || mode.image || "/placeholder.svg"}
+                    alt={mode.name}
+                    width={200}
+                    height={250}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <video
+                    key={mode.video}
+                    poster={cachedImageUrls[mode.image] || mode.image}
+                    src={mode.video}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="w-full h-full object-cover"
+                    onError={() => handleVideoError(mode.video)}
+                  />
+                )}
+              </div>
+              <span className="font-grandstander text-gray-800 text-2xl h-16 flex items-center justify-center">
+                {mode.name}
+              </span>
+            </button>
+          ))}
         </div>
       </div>
     )
   }
 
   if (gameState === "menu") {
-    const logoVideoUrl = cachedVideoUrls[videosToCache.logo]
     return (
       <div className="min-h-screen bg-[#F7F2E8] flex flex-col items-center justify-center p-4">
         <Card
@@ -466,20 +415,18 @@ export default function MobileChallengeGame() {
                     className="w-full max-w-[240px] h-auto"
                   />
                 ) : (
-                  logoVideoUrl && (
-                    <video
-                      key={logoVideoUrl}
-                      src={logoVideoUrl}
-                      autoPlay
-                      loop
-                      muted
-                      playsInline
-                      className="w-full h-auto"
-                      style={{ maxHeight: "140px" }}
-                      poster={cachedImageUrls[imagesToCache.logoFallback] || "/googly-game-logo.webp"}
-                      onError={() => handleVideoError(videosToCache.logo)}
-                    />
-                  )
+                  <video
+                    key={videosToCache.logo}
+                    src={videosToCache.logo}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="w-full h-auto"
+                    style={{ maxHeight: "140px" }}
+                    poster={cachedImageUrls[imagesToCache.logoFallback] || "/googly-game-logo.webp"}
+                    onError={() => handleVideoError(videosToCache.logo)}
+                  />
                 )}
               </div>
               <p className="text-gray-600 text-xl leading-relaxed">
