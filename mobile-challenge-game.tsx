@@ -290,7 +290,7 @@ export default function MobileChallengeGame() {
     <div className="flex flex-col items-center justify-center h-64 space-y-4">
       <div className="w-[80vw] max-w-md h-auto flex items-center justify-center">
         {videoErrors[videosToCache.shuffle] ? (
-          <Image src="/shuffle-fallback.png" alt="Shuffling cards" width={400} height={225} />
+          <Image src="/shuffle-fallback.webp" alt="Shuffling cards" width={400} height={225} />
         ) : (
           <video
             key={cachedVideoUrls[videosToCache.shuffle]}
@@ -312,10 +312,10 @@ export default function MobileChallengeGame() {
 
   const ModeSelectionScreen = () => {
     const modes = [
-      { name: "Surprise Us", key: null, image: "/random.png", video: videosToCache.random },
-      { name: "Eating Together", key: "eating_together", image: "/eating.png", video: videosToCache.eating },
-      { name: "At Home", key: "at_home", image: "/home.png", video: videosToCache.home },
-      { name: "Outside", key: "outside", image: "/outside.png", video: videosToCache.outside },
+      { name: "Surprise Us", key: null, image: "/random.webp", video: videosToCache.random },
+      { name: "Eating Together", key: "eating_together", image: "/eating.webp", video: videosToCache.eating },
+      { name: "At Home", key: "at_home", image: "/home.webp", video: videosToCache.home },
+      { name: "Outside", key: "outside", image: "/outside.webp", video: videosToCache.outside },
     ]
 
     return (
