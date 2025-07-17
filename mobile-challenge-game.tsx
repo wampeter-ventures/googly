@@ -134,16 +134,16 @@ for (let i = numRowsForRatingGrid - 1; i >= 0; i--) {
 }
 
 const videosToCache = {
-  logo: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/-weEh64GQGxhpep1IGd5m9/public/googly-game-logo.webp", // Updated to use the new webp blob
+  logo: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/wwhug1CKP-YHcUmyv6n6fk/public/googly-logo.mp4",
   shuffle:
-    "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/oj1HzQJCntxxi9EKbV4moL/publichttps://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/oj1HzQJCntxxi9EKbV4moL/public/shuffle.mp4", // Updated to use new blob
+    "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/oj1HzQJCntxxi9EKbV4moL/publichttps://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/oj1HzQJCntxxi9EKbV4moL/public/shuffle.mp4",
   random:
-    "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/jv07mR7mVBCN2wy5MGqFGE/publichttps://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/jv07mR7mVBCN2wy5MGqFGE/public/random.mp4", // Updated to use new blob
+    "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/jv07mR7mVBCN2wy5MGqFGE/publichttps://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/jv07mR7mVBCN2wy5MGqFGE/public/random.mp4",
   eating:
-    "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/aJ8gsXNscdSVYjPctsGnk_/publichttps://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/aJ8gsXNscdSVYjPctsGnk_/public/eating.mp4", // Updated to use new blob
-  home: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/Ijl6M-_R8lahXm7hCtdd9T/publichttps://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/Ijl6M-_R8lahXm7hCtdd9T/public/home.mp4", // Updated to use new blob
+    "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/aJ8gsXNscdSVYjPctsGnk_/publichttps://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/aJ8gsXNscdSVYjPctsGnk_/public/eating.mp4",
+  home: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/Ijl6M-_R8lahXm7hCtdd9T/publichttps://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/Ijl6M-_R8lahXm7hCtdd9T/public/home.mp4",
   outside:
-    "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/Z9pCNpmEvjoAf1ojpAyrFr/publichttps://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/Z9pCNpmEvjoAf1ojpAyrFr/public/outside.mp4", // Updated to use new blob
+    "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/Z9pCNpmEvjoAf1ojpAyrFr/publichttps://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_9nKP6APb1SxavvRC9rSJnLBoy4dd/Z9pCNpmEvjoAf1ojpAyrFr/public/outside.mp4",
 }
 
 const imagesToCache = {
@@ -179,6 +179,7 @@ export default function MobileChallengeGame() {
   const [isCountingDown, setIsCountingDown] = useState(false)
   const [countdownComplete, setCountdownComplete] = useState(false)
   const [cachedImageUrls, setCachedImageUrls] = useState<Record<string, string>>({})
+  const [isMediaReady, setIsMediaReady] = useState(false)
 
   useEffect(() => {
     const fetchCards = async () => {
@@ -225,6 +226,8 @@ export default function MobileChallengeGame() {
       )
 
       setCachedImageUrls(imageUrlMap)
+      setIsMediaReady(true)
+      console.log("Media is ready!")
       console.log("Media caching completed")
     }
 
@@ -341,34 +344,39 @@ export default function MobileChallengeGame() {
     }
   }, [gameState, revealedCards, turnResults])
 
-  const ShufflingAnimation = () => (
-    <div className="flex flex-col items-center justify-center h-64 space-y-4">
-      <div className="w-[80vw] max-w-md h-auto flex items-center justify-center">
-        {videoErrors[videosToCache.shuffle] ? (
-          <Image
-            src={cachedImageUrls[imagesToCache.shuffleFallback] || "/shuffle-fallback.webp"}
-            alt="Shuffling cards"
-            width={400}
-            height={225}
-          />
-        ) : (
-          <video
-            key={cachedVideoUrls[videosToCache.shuffle]}
-            src={cachedVideoUrls[videosToCache.shuffle]}
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="w-full h-auto object-contain"
-            poster={cachedImageUrls[imagesToCache.shuffleFallback] || "/shuffle-fallback.png"}
-            onError={() => handleVideoError(videosToCache.shuffle)}
-          />
-        )}
+  const ShufflingAnimation = () => {
+    const shuffleVideoUrl = cachedVideoUrls[videosToCache.shuffle]
+    return (
+      <div className="flex flex-col items-center justify-center h-64 space-y-4">
+        <div className="w-[80vw] max-w-md h-auto flex items-center justify-center">
+          {videoErrors[videosToCache.shuffle] ? (
+            <Image
+              src={cachedImageUrls[imagesToCache.shuffleFallback] || "/shuffle-fallback.webp"}
+              alt="Shuffling cards"
+              width={400}
+              height={225}
+            />
+          ) : (
+            shuffleVideoUrl && (
+              <video
+                key={shuffleVideoUrl}
+                src={shuffleVideoUrl}
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="w-full h-auto object-contain"
+                poster={cachedImageUrls[imagesToCache.shuffleFallback] || "/shuffle-fallback.png"}
+                onError={() => handleVideoError(videosToCache.shuffle)}
+              />
+            )
+          )}
+        </div>
+        <div className="text-4xl font-grandstander text-gray-800 animate-bounce">Shuffling cards!</div>
+        <div className="text-sm text-gray-600 animate-pulse">Preparing your next challenge...</div>
       </div>
-      <div className="text-4xl font-grandstander text-gray-800 animate-bounce">Shuffling cards!</div>
-      <div className="text-sm text-gray-600 animate-pulse">Preparing your next challenge...</div>
-    </div>
-  )
+    )
+  }
 
   const ModeSelectionScreen = () => {
     const modes = [
@@ -384,52 +392,59 @@ export default function MobileChallengeGame() {
     ]
 
     return (
+      // ... outer div ...
       <div className="min-h-screen bg-[#F7F2E8] flex flex-col items-center justify-center p-4">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-black">Choose a Mode</h1>
           <p className="text-gray-600">How are you playing today?</p>
         </div>
         <div className="grid grid-cols-2 gap-4 w-full max-w-lg">
-          {modes.map((mode) => (
-            <button
-              key={mode.name}
-              onClick={() => startGameWithMode(mode.key)}
-              className="aspect-[4/5] bg-white rounded-2xl shadow-lg border-2 border-gray-200 flex flex-col items-center justify-center p-4 text-center space-y-3 transform transition-transform hover:scale-105 active:scale-100"
-            >
-              <div className="w-full h-auto flex-grow rounded-lg overflow-hidden">
-                {videoErrors[mode.video] ? (
-                  <Image
-                    src={cachedImageUrls[mode.image] || mode.image || "/placeholder.svg"}
-                    alt={mode.name}
-                    width={200}
-                    height={250}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <video
-                    key={cachedVideoUrls[mode.video]}
-                    poster={cachedImageUrls[mode.image] || mode.image}
-                    src={cachedVideoUrls[mode.video]}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    className="w-full h-full object-cover"
-                    onError={() => handleVideoError(mode.video)}
-                  />
-                )}
-              </div>
-              <span className="font-grandstander text-gray-800 text-2xl h-16 flex items-center justify-center">
-                {mode.name}
-              </span>
-            </button>
-          ))}
+          {modes.map((mode) => {
+            const modeVideoUrl = cachedVideoUrls[mode.video]
+            return (
+              <button
+                key={mode.name}
+                onClick={() => startGameWithMode(mode.key)}
+                className="aspect-[4/5] bg-white rounded-2xl shadow-lg border-2 border-gray-200 flex flex-col items-center justify-center p-4 text-center space-y-3 transform transition-transform hover:scale-105 active:scale-100"
+              >
+                <div className="w-full h-auto flex-grow rounded-lg overflow-hidden">
+                  {videoErrors[mode.video] ? (
+                    <Image
+                      src={cachedImageUrls[mode.image] || mode.image || "/placeholder.svg"}
+                      alt={mode.name}
+                      width={200}
+                      height={250}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    modeVideoUrl && (
+                      <video
+                        key={modeVideoUrl}
+                        poster={cachedImageUrls[mode.image] || mode.image}
+                        src={modeVideoUrl}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="w-full h-full object-cover"
+                        onError={() => handleVideoError(mode.video)}
+                      />
+                    )
+                  )}
+                </div>
+                <span className="font-grandstander text-gray-800 text-2xl h-16 flex items-center justify-center">
+                  {mode.name}
+                </span>
+              </button>
+            )
+          })}
         </div>
       </div>
     )
   }
 
   if (gameState === "menu") {
+    const logoVideoUrl = cachedVideoUrls[videosToCache.logo]
     return (
       <div className="min-h-screen bg-[#F7F2E8] flex flex-col items-center justify-center p-4">
         <Card
@@ -451,18 +466,20 @@ export default function MobileChallengeGame() {
                     className="w-full max-w-[240px] h-auto"
                   />
                 ) : (
-                  <video
-                    key={cachedVideoUrls[videosToCache.logo]}
-                    src={cachedVideoUrls[videosToCache.logo]}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    className="w-full h-auto"
-                    style={{ maxHeight: "140px" }}
-                    poster={cachedImageUrls[imagesToCache.logoFallback] || "/googly-game-logo.webp"}
-                    onError={() => handleVideoError(videosToCache.logo)}
-                  />
+                  logoVideoUrl && (
+                    <video
+                      key={logoVideoUrl}
+                      src={logoVideoUrl}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className="w-full h-auto"
+                      style={{ maxHeight: "140px" }}
+                      poster={cachedImageUrls[imagesToCache.logoFallback] || "/googly-game-logo.webp"}
+                      onError={() => handleVideoError(videosToCache.logo)}
+                    />
+                  )
                 )}
               </div>
               <p className="text-gray-600 text-xl leading-relaxed">
@@ -473,10 +490,22 @@ export default function MobileChallengeGame() {
               <div className="space-y-4">
                 <Button
                   onClick={() => setGameState("modeSelection")}
-                  disabled={isLoadingCards}
+                  disabled={isLoadingCards || !isMediaReady}
                   className="relative w-full bg-black hover:bg-gray-800 text-white font-medium text-xl py-6 rounded-full disabled:bg-gray-400"
                 >
-                  {isLoadingCards ? <Loader2 className="w-6 h-6 animate-spin" /> : "Play"}
+                  {isLoadingCards ? (
+                    <>
+                      <Loader2 className="w-6 h-6 mr-2 animate-spin" />
+                      Loading Cards...
+                    </>
+                  ) : !isMediaReady ? (
+                    <>
+                      <Loader2 className="w-6 h-6 mr-2 animate-spin" />
+                      Loading Media...
+                    </>
+                  ) : (
+                    "Play"
+                  )}
                 </Button>
                 <Button
                   onClick={() => setGameState("stats")}
