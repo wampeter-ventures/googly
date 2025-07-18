@@ -22,6 +22,8 @@ const config = {
     extend: {
       fontFamily: {
         grandstander: ["var(--font-grandstander)", "cursive"],
+        annie: ["var(--font-annie)", "cursive"],
+        fredoka: ["var(--font-fredoka)", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",

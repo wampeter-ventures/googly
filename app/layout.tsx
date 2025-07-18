@@ -1,6 +1,6 @@
 import type React from "react"
 import "./globals.css"
-import { Grandstander } from "next/font/google"
+import { Grandstander, Annie_Use_Your_Telescope, Fredoka } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 
 const grandstander = Grandstander({
@@ -10,10 +10,24 @@ const grandstander = Grandstander({
   variable: "--font-grandstander",
 })
 
+const annieUseYourTelescope = Annie_Use_Your_Telescope({
+  subsets: ["latin"],
+  display: "swap",
+  weight: "400",
+  variable: "--font-annie",
+})
+
+const fredoka = Fredoka({
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-fredoka",
+})
+
 export const metadata = {
   title: "Family Challenge Cards",
   description: "Fun challenges for the whole family",
-    generator: 'v0.dev'
+  generator: "v0.dev",
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -25,7 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="icon" href="/icon-192.png" />
         <link rel="apple-touch-icon" href="/icon-512.png" />
       </head>
-      <body className={`${grandstander.variable}`}>
+      <body className={`${grandstander.variable} ${annieUseYourTelescope.variable} ${fredoka.variable}`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           {children}
         </ThemeProvider>

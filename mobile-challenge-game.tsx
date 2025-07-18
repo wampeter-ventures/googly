@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { BarChart3, HelpCircle, Loader2 } from "lucide-react"
+import { BarChart3, HelpCircle, Loader2, Home } from "lucide-react"
 import GooglyEyesAnimation from "@/components/googly-eyes-animation"
 import CountdownTimer from "@/components/countdown-timer"
 import { supabase } from "@/lib/supabase"
@@ -256,6 +256,10 @@ export default function MobileChallengeGame() {
     }
   }
 
+  const resetGame = () => {
+    setGameState("menu")
+  }
+
   useEffect(() => {
     if (gameState === "finalRecap" && revealedCards.length < turnResults.length) {
       const timer = setTimeout(() => setRevealedCards((prev) => [...prev, turnResults[prev.length]]), 500)
@@ -284,8 +288,10 @@ export default function MobileChallengeGame() {
             />
           )}
         </div>
-        <div className="text-4xl font-grandstander text-gray-800 animate-bounce">Shuffling cards!</div>
-        <div className="text-sm text-gray-600 animate-pulse">Preparing your next challenge...</div>
+        <div className="text-4xl font-fredoka text-gray-800 animate-bounce">Shuffling cards!</div>
+        <div className="font-grandstander text-base text-gray-600 animate-pulse font-extralight">
+          Preparing your next challenge...
+        </div>
       </div>
     )
   }
@@ -305,9 +311,9 @@ export default function MobileChallengeGame() {
 
     return (
       <div className="min-h-screen bg-[#F7F2E8] flex flex-col items-center justify-center p-4">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-black">Choose a Mode</h1>
-          <p className="text-gray-600">How are you playing today?</p>
+        <div className="text-center mb-4 mt-4">
+          <h1 className="text-4xl font-fredoka text-black">Choose a Mode</h1>
+          <p className="font-grandstander text-gray-600 text-lg font-extralight">How are you playing today?</p>
         </div>
         <div className="grid grid-cols-2 gap-4 w-full max-w-lg">
           {modeOptions.map((mode) => (
@@ -350,17 +356,23 @@ export default function MobileChallengeGame() {
     )
   }
 
+  const HomeButton = () => (
+    <Button
+      onClick={resetGame}
+      variant="ghost"
+      size="icon"
+      className="fixed top-4 left-4 z-50 bg-black/20 text-white hover:bg-black/40 rounded-full h-10 w-10"
+    >
+      <Home className="w-5 h-5" />
+      <span className="sr-only">Home</span>
+    </Button>
+  )
+
   if (gameState === "menu") {
     return (
       <div className="min-h-screen bg-[#F7F2E8] flex flex-col items-center justify-center p-4">
-        <Card
-          className="w-full max-w-none mx-4 bg-white shadow-lg border-0"
-          style={{ minHeight: "calc(100vh - 2rem)" }}
-        >
-          <CardContent
-            className="p-8 flex flex-col justify-center items-center h-full"
-            style={{ minHeight: "calc(100vh - 4rem)" }}
-          >
+        <Card className="w-full max-w-none mx-4 bg-white shadow-lg border-0 h-[calc(100svh-2rem)]" style={{}}>
+          <CardContent className="p-8 flex flex-col justify-center items-center h-full" style={{}}>
             <div className="text-center space-y-8 w-full max-w-sm">
               <div className="w-full max-w-[240px] mx-auto">
                 {videoErrors[videos.logo] ? (
@@ -387,7 +399,7 @@ export default function MobileChallengeGame() {
                   />
                 )}
               </div>
-              <p className="text-gray-600 text-xl leading-relaxed">
+              <p className="font-grandstander text-gray-600 text-xl leading-relaxed font-extralight">
                 Don't overthink it
                 <br />
                 Just do the thing!
@@ -416,53 +428,72 @@ export default function MobileChallengeGame() {
               </div>
             </div>
           </CardContent>
+          <div className="absolute bottom-4 text-center w-full pb-1">
+            <a
+              href="https://gamedesignclub.org"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-annie text-lg text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              Play more games
+            </a>
+            <p className="font-annie text-base text-gray-400 mt-1">◕‿◕</p>
+          </div>
         </Card>
       </div>
     )
   }
 
   if (gameState === "modeSelection") {
-    return <ModeSelectionScreen />
+    return (
+      <>
+        <HomeButton />
+        <ModeSelectionScreen />
+      </>
+    )
   }
 
   if (gameState === "stats") {
     return (
-      <div className="min-h-screen bg-[#F7F2E8] p-4">
-        <div className="max-w-md mx-auto pt-8">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-black mb-2">Statistics</h1>
-            <p className="text-gray-600">Your Googly Game journey</p>
-          </div>
-          <div className="space-y-4 mb-8">
-            <Card className="bg-white border-2 border-gray-200">
-              <CardContent className="p-4 text-center">
-                <div className="text-3xl font-bold text-black">{stats.gamesPlayed}</div>
-                <div className="text-sm text-gray-600">Played</div>
-              </CardContent>
-            </Card>
-            <div className="grid grid-cols-2 gap-4">
-              <Card className="bg-white border-2 border-gray-200">
-                <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-black">{stats.currentStreak}</div>
-                  <div className="text-sm text-gray-600">Current Streak</div>
-                </CardContent>
-              </Card>
-              <Card className="bg-white border-2 border-gray-200">
-                <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-black">{stats.maxStreak}</div>
-                  <div className="text-sm text-gray-600">Max Streak</div>
-                </CardContent>
-              </Card>
+      <>
+        <HomeButton />
+        <div className="min-h-screen bg-[#F7F2E8] p-4">
+          <div className="max-w-md mx-auto pt-8">
+            <div className="text-center mb-8">
+              <h1 className="text-2xl font-bold text-black mb-2">Statistics</h1>
+              <p className="text-gray-600">Your Googly Game journey</p>
             </div>
+            <div className="space-y-4 mb-8">
+              <Card className="bg-white border-2 border-gray-200">
+                <CardContent className="p-4 text-center">
+                  <div className="text-3xl font-bold text-black">{stats.gamesPlayed}</div>
+                  <div className="text-sm text-gray-600">Played</div>
+                </CardContent>
+              </Card>
+              <div className="grid grid-cols-2 gap-4">
+                <Card className="bg-white border-2 border-gray-200">
+                  <CardContent className="p-4 text-center">
+                    <div className="text-2xl font-bold text-black">{stats.currentStreak}</div>
+                    <div className="text-sm text-gray-600">Current Streak</div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-white border-2 border-gray-200">
+                  <CardContent className="p-4 text-center">
+                    <div className="text-2xl font-bold text-black">{stats.maxStreak}</div>
+                    <div className="text-sm text-gray-600">Max Streak</div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+            <Button
+              onClick={() => setGameState("menu")}
+              className="w-full bg-black hover:bg-gray-800 text-white font-medium text-lg py-4 rounded-full"
+            >
+              Back to Menu
+            </Button>
           </div>
-          <Button
-            onClick={() => setGameState("menu")}
-            className="w-full bg-black hover:bg-gray-800 text-white font-medium text-lg py-4 rounded-full"
-          >
-            Back to Menu
-          </Button>
         </div>
-      </div>
+      </>
     )
   }
 
@@ -471,171 +502,180 @@ export default function MobileChallengeGame() {
     const showNextTurnButton = selectedCard && (!selectedCard.timer || countdownComplete)
 
     return (
-      <div className="min-h-screen bg-[#F7F2E8] p-4 flex flex-col justify-center">
-        {isCountingDown && selectedCard?.timer && (
-          <CountdownTimer
-            duration={selectedCard.timer}
-            onComplete={() => {
-              setIsCountingDown(false)
-              setCountdownComplete(true)
-            }}
-          />
-        )}
-        <div className="max-w-md mx-auto w-full">
-          <div className="text-center mb-6">
-            <h2 className="text-3xl font-grandstander text-black mb-2">Round {currentTurn} of 8</h2>
-            <p className="text-gray-600">Pick your challenge!</p>
-          </div>
-          {isShuffling ? (
-            <div className="mt-12">
-              <ShufflingAnimation />
-            </div>
-          ) : (
-            <div className="space-y-6 mb-6">
-              {currentCards.map((card) => (
-                <Card
-                  key={card.id}
-                  className={cn(
-                    "border-4 cursor-pointer transform transition-all duration-300 min-h-[200px] flex flex-col justify-center",
-                    getCardStyle(card.category, card.color),
-                    selectedCard?.id === card.id
-                      ? "scale-105 ring-4 ring-black shadow-2xl"
-                      : "hover:scale-102 shadow-lg",
-                  )}
-                  onClick={() => selectCard(card)}
-                >
-                  <CardContent className="p-6 relative overflow-hidden">
-                    <div className="absolute inset-0 opacity-10">
-                      <div className="absolute top-2 right-2 text-4xl">{card.icon}</div>
-                    </div>
-                    <div className="relative z-10">
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-2xl">{card.icon}</span>
-                        <span className="font-grandstander text-sm bg-white/90 px-3 py-1 rounded-full">
-                          {card.category}
-                        </span>
-                      </div>
-                      <p className="text-lg font-medium text-gray-900 leading-tight">{card.challenge}</p>
-                      {selectedCard?.id === card.id && card.hint && (
-                        <>
-                          {!showHint && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="mt-3 w-full text-xs py-1 bg-white/80 hover:bg-white"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setShowHint(true)
-                              }}
-                            >
-                              <HelpCircle className="w-3 h-3 mr-1" /> Show Hint
-                            </Button>
-                          )}
-                          {showHint && (
-                            <div className="mt-3 text-xs text-gray-800 bg-yellow-50 p-2 rounded-md border border-yellow-200">
-                              <p className="font-semibold mb-1 text-yellow-700">Hint:</p>
-                              <p>{card.hint}</p>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+      <>
+        <HomeButton />
+        <div className="min-h-screen bg-[#F7F2E8] p-4 flex flex-col justify-center">
+          {isCountingDown && selectedCard?.timer && (
+            <CountdownTimer
+              duration={selectedCard.timer}
+              onComplete={() => {
+                setIsCountingDown(false)
+                setCountdownComplete(true)
+              }}
+            />
           )}
-          <div className="text-center space-y-2 mt-auto pb-4">
-            {showStartButton && (
-              <Button
-                onClick={() => setIsCountingDown(true)}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-medium text-lg py-3 rounded-full"
-              >
-                {selectedCard?.timer ? "Start Timer" : "Start!"}
-              </Button>
+          <div className="max-w-md mx-auto w-full">
+            <div className="text-center mb-4">
+              <h2 className="text-4xl font-fredoka text-black mb-2">Round {currentTurn} of 8</h2>
+              <p className="font-grandstander text-gray-600 text-lg font-extralight">Pick your challenge!</p>
+            </div>
+            {isShuffling ? (
+              <div className="mt-12">
+                <ShufflingAnimation />
+              </div>
+            ) : (
+              <div className="space-y-6 mb-6">
+                {currentCards.map((card) => (
+                  <Card
+                    key={card.id}
+                    className={cn(
+                      "border-4 cursor-pointer transform transition-all duration-300 min-h-[200px] flex flex-col justify-center",
+                      getCardStyle(card.category, card.color),
+                      selectedCard?.id === card.id
+                        ? "scale-105 ring-4 ring-black shadow-2xl"
+                        : "hover:scale-102 shadow-lg",
+                    )}
+                    onClick={() => selectCard(card)}
+                  >
+                    <CardContent className="p-6 relative overflow-hidden">
+                      <div className="absolute inset-0 opacity-10">
+                        <div className="absolute top-2 right-2 text-4xl">{card.icon}</div>
+                      </div>
+                      <div className="relative z-10">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="text-2xl">{card.icon}</span>
+                          <span className="font-grandstander text-sm bg-white/90 px-3 py-1 rounded-full">
+                            {card.category}
+                          </span>
+                        </div>
+                        <p className="text-lg font-medium text-gray-900 leading-tight">{card.challenge}</p>
+                        {selectedCard?.id === card.id && card.hint && (
+                          <>
+                            {!showHint && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="mt-3 w-full text-xs py-1 bg-white/80 hover:bg-white"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setShowHint(true)
+                                }}
+                              >
+                                <HelpCircle className="w-3 h-3 mr-1" /> Show Hint
+                              </Button>
+                            )}
+                            {showHint && (
+                              <div className="mt-3 text-xs text-gray-800 bg-yellow-50 p-2 rounded-md border border-yellow-200">
+                                <p className="font-semibold mb-1 text-yellow-700">Hint:</p>
+                                <p>{card.hint}</p>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             )}
-            {showNextTurnButton && (
-              <>
+            <div className="text-center space-y-2 mt-auto pb-4">
+              {showStartButton && (
                 <Button
-                  onClick={nextTurn}
-                  className="w-full bg-black hover:bg-gray-800 text-white font-medium text-lg py-3 rounded-full"
+                  onClick={() => setIsCountingDown(true)}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white font-medium text-lg py-3 rounded-full"
                 >
-                  {selectedCard?.category === "Teamwork" || selectedCard?.category === "Face Off"
-                    ? "We did the thing!"
-                    : "I did the thing!"}
+                  {selectedCard?.timer ? "Start Timer" : "Start!"}
                 </Button>
-                <p className="text-gray-500 text-sm">(pass to the next player)</p>
-              </>
-            )}
+              )}
+              {showNextTurnButton && (
+                <>
+                  <Button
+                    onClick={nextTurn}
+                    className="w-full bg-black hover:bg-gray-800 text-white font-medium text-lg py-3 rounded-full"
+                  >
+                    {selectedCard?.category === "Teamwork" || selectedCard?.category === "Face Off"
+                      ? "We did the thing!"
+                      : "I did the thing!"}
+                  </Button>
+                  <p className="text-gray-500 text-sm">(pass to the next player)</p>
+                </>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      </>
     )
   }
 
   if (gameState === "ranking") {
     return (
-      <div className="min-h-screen bg-[#F7F2E8] p-4 flex flex-col">
-        <div className="text-center my-4">
-          <h2 className="text-2xl font-bold text-black">How was it?</h2>
+      <>
+        <HomeButton />
+        <div className="min-h-screen bg-[#F7F2E8] p-4 flex flex-col">
+          <div className="text-center my-4">
+            <h2 className="text-4xl font-fredoka text-black">How was it?</h2>
+          </div>
+          <div className="flex-grow grid grid-cols-5 gap-2 content-center">
+            {ratingsForDisplay.map((rating) => (
+              <button
+                key={rating.emoji}
+                onClick={() => handleEmojiSelection(rating)}
+                className="relative aspect-square flex items-center justify-center rounded-2xl transition-all duration-200 transform bg-white/40 hover:scale-105 hover:shadow-lg active:scale-95"
+              >
+                <span className="text-4xl md:text-5xl">{rating.emoji}</span>
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex-grow grid grid-cols-5 gap-2 content-center">
-          {ratingsForDisplay.map((rating) => (
-            <button
-              key={rating.emoji}
-              onClick={() => handleEmojiSelection(rating)}
-              className="relative aspect-square flex items-center justify-center rounded-2xl transition-all duration-200 transform bg-white/40 hover:scale-105 hover:shadow-lg active:scale-95"
-            >
-              <span className="text-4xl md:text-5xl">{rating.emoji}</span>
-            </button>
-          ))}
-        </div>
-      </div>
+      </>
     )
   }
 
   if (gameState === "finalRecap") {
     return (
-      <div className="min-h-screen bg-[#F7F2E8] p-4 flex flex-col items-center justify-center relative overflow-hidden">
-        <GooglyEyesAnimation />
-        <h1 className="text-4xl font-bold text-black mb-8 z-10 drop-shadow-lg">Your Game!</h1>
-        <div className="relative w-full h-[400px]">
-          {revealedCards.map((result, index) => (
-            <div
-              key={result.card.id}
-              className="absolute w-full transition-all duration-500 ease-out"
-              style={{
-                top: "50%",
-                left: "50%",
-                transform: `translate(-50%, -50%) translateX(${index * 8 - (revealedCards.length - 1) * 4}px) translateY(${index * 8 - (revealedCards.length - 1) * 4}px) rotate(${(index - (revealedCards.length - 1) / 2) * 4}deg)`,
-                zIndex: index,
-              }}
-            >
-              <Card
-                className={cn(
-                  "border-4 border-white shadow-2xl max-w-xs mx-auto",
-                  getCardStyle(result.card.category, result.card.color),
-                )}
+      <>
+        <HomeButton />
+        <div className="min-h-screen bg-[#F7F2E8] p-4 flex flex-col items-center justify-center relative overflow-hidden">
+          <GooglyEyesAnimation />
+          <h1 className="text-4xl font-bold text-black mb-8 z-10 drop-shadow-lg">Your Game!</h1>
+          <div className="relative w-full h-[400px]">
+            {revealedCards.map((result, index) => (
+              <div
+                key={result.card.id}
+                className="absolute w-full transition-all duration-500 ease-out"
+                style={{
+                  top: "50%",
+                  left: "50%",
+                  transform: `translate(-50%, -50%) translateX(${index * 8 - (revealedCards.length - 1) * 4}px) translateY(${index * 8 - (revealedCards.length - 1) * 4}px) rotate(${(index - (revealedCards.length - 1) / 2) * 4}deg)`,
+                  zIndex: index,
+                }}
               >
-                <CardContent className="p-4 text-center">
-                  <div className="text-5xl mb-2">{result.emoji}</div>
-                  <p className="font-medium text-gray-800 text-sm">{result.card.challenge}</p>
-                </CardContent>
-              </Card>
-            </div>
-          ))}
-        </div>
-        {revealedCards.length === 8 && (
-          <div className="mt-8 z-10">
-            <Button
-              onClick={() => setGameState("menu")}
-              className="bg-black hover:bg-gray-800 text-white font-medium text-xl px-10 py-5 rounded-full animate-fade-in"
-            >
-              Play Again?
-            </Button>
+                <Card
+                  className={cn(
+                    "border-4 border-white shadow-2xl max-w-xs mx-auto",
+                    getCardStyle(result.card.category, result.card.color),
+                  )}
+                >
+                  <CardContent className="p-4 text-center">
+                    <div className="text-5xl mb-2">{result.emoji}</div>
+                    <p className="font-medium text-gray-800 text-sm">{result.card.challenge}</p>
+                  </CardContent>
+                </Card>
+              </div>
+            ))}
           </div>
-        )}
-      </div>
+          {revealedCards.length === 8 && (
+            <div className="mt-8 z-10">
+              <Button
+                onClick={() => setGameState("menu")}
+                className="bg-black hover:bg-gray-800 text-white font-medium text-xl px-10 py-5 rounded-full animate-fade-in"
+              >
+                Play Again?
+              </Button>
+            </div>
+          )}
+        </div>
+      </>
     )
   }
 
