@@ -25,9 +25,33 @@ const fredoka = Fredoka({
 })
 
 export const metadata = {
-  title: "Family Challenge Cards",
-  description: "Fun challenges for the whole family",
+  title: "The Googly Game",
+  description: "Don't overthink it, just do the thing! Fun family challenges for everyone.",
   generator: "v0.dev",
+  metadataBase: new URL("https://thegooglygame.com"), // Replace with your actual domain
+  openGraph: {
+    title: "The Googly Game",
+    description: "Don't overthink it, just do the thing! Fun family challenges for everyone.",
+    images: [
+      {
+        url: "/icon-512.png",
+        width: 512,
+        height: 512,
+        alt: "The Googly Game",
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "The Googly Game",
+    description: "Don't overthink it, just do the thing! Fun family challenges for everyone.",
+    images: ["/icon-512.png"],
+  },
+  icons: {
+    icon: "/icon-192.png",
+    apple: "/icon-512.png",
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
