@@ -133,6 +133,28 @@ Each card should aim for one or more of these qualities:
 
 Avoid generic list-style prompts (e.g., "Name 5 things"). Think improv, Taskmaster, and recess energy.
 
+# CRITERIA
+## Yes: 
+Fun and memorable. 
+Short and clear and iconic. 
+Make them all simple and clear. 
+Some should be group, some should just be individual. 
+If there are props they should be easy to find not like rice or popcorn or spoons. 
+
+## No:
+No freeze. 
+No statue. 
+No elbows. 
+No emoji-based action concepts. 
+No recursion. 
+No winks. 
+No Hums. No popcorn. 
+Nothing about your own name. 
+No claps. Do less “everyone” options. 
+No corners of the room. 
+No books. 
+No blinks. 
+
 # JSON SCHEMA
 Each card object should have:
 {
